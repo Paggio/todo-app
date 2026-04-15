@@ -24,3 +24,24 @@ export type ApiError = {
   detail: string
   code: string
 }
+
+// ---------------------------------------------------------------------------
+// Todo types (Story 3.2+)
+// ---------------------------------------------------------------------------
+
+export type Todo = {
+  id: number
+  userId: number
+  description: string
+  isCompleted: boolean
+  createdAt: string // ISO 8601 UTC
+}
+
+export type CreateTodoRequest = {
+  description: string
+}
+
+export type UpdateTodoRequest = {
+  isCompleted?: boolean
+  description?: string
+}

@@ -1,5 +1,5 @@
 # generated: 2026-04-14
-# last_updated: 2026-04-15 (epic-2-retrospective completed)
+# last_updated: 2026-04-15
 # project: bmad_nf_todo_app
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-14
-last_updated: 2026-04-15
+last_updated: 2026-04-15T00:00:00
 project: bmad_nf_todo_app
 project_key: NOKEY
 tracking_system: file-system
@@ -59,14 +59,14 @@ development_status:
   epic-2-retrospective: done
 
   # Epic 3: Todo Management & Core Interaction
-  epic-3: backlog
-  3-1-todo-crud-api-endpoints: backlog
-  3-2-todo-list-view-with-active-and-completed-sections: backlog
-  3-3-todo-creation-via-fab-with-optimistic-updates: backlog
-  3-4-todo-completion-toggle-with-optimistic-updates: backlog
-  3-5-todo-deletion-with-optimistic-updates: backlog
-  3-6-empty-loading-and-error-state-handling: backlog
-  epic-3-retrospective: optional
+  epic-3: done
+  3-1-todo-crud-api-endpoints: done
+  3-2-todo-list-view-with-active-and-completed-sections: done
+  3-3-todo-creation-via-fab-with-optimistic-updates: done
+  3-4-todo-completion-toggle-with-optimistic-updates: done
+  3-5-todo-deletion-with-optimistic-updates: done
+  3-6-empty-loading-and-error-state-handling: done
+  epic-3-retrospective: done
 
   # Epic 4: Design Polish, Responsiveness & Accessibility
   epic-4: backlog
