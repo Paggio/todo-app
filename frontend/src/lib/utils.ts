@@ -88,7 +88,7 @@ function shortDate(date: Date): string {
  * | Overdue (past)          | "Overdue \u00B7 Apr 10" | true      | false  |
  * | Today                   | "Today"                | false     | true   |
  * | Tomorrow                | "Tomorrow"             | false     | false  |
- * | This week (2-6 days)    | Day name (e.g. "Thu")  | false     | false  |
+ * | This week (2-6 days)    | Day name (e.g. "Thursday") | false | false  |
  * | Beyond                  | Short date "Apr 23"    | false     | false  |
  */
 export function formatDeadline(deadline: string | null): DeadlineFormat | null {

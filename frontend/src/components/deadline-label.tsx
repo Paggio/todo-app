@@ -62,7 +62,9 @@ export function DeadlineLabel({ todo }: DeadlineLabelProps) {
           lineHeight: "1.4",
           color: formatted.isOverdue
             ? "var(--color-overdue-text)"
-            : "var(--muted-foreground)",
+            : formatted.isBold
+              ? "var(--foreground)"
+              : "var(--muted-foreground)",
           fontWeight: formatted.isBold ? 500 : 400,
         }}
       >
