@@ -4,6 +4,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
+previousEpics: [1, 2, 3, 4]
+newWorkScope: 'Organizational features: categories, priorities, deadlines, multi-view navigation (FR31-FR47, NFR14, UX-DR21-UX-DR34)'
 ---
 
 # bmad_nf_todo_app - Epic Breakdown
@@ -25,20 +27,20 @@ FR6: The system issues a token upon successful login that authenticates subseque
 FR7: When a user's session expires or token is invalid, the system redirects them to the login screen without data loss
 FR8: After re-authenticating from an expired session, the user is returned to their todo list
 FR9: The system rejects requests to protected API endpoints that lack valid authentication
-FR10: An authenticated user can create a new todo by providing a text description
+FR10: An authenticated user can create a new todo by providing a text description, and optionally a deadline, priority level, and category
 FR11: An authenticated user can view all their todos — both active and completed
 FR12: An authenticated user can mark a todo as complete
 FR13: An authenticated user can mark a completed todo as active (undo completion)
 FR14: An authenticated user can delete a todo permanently
 FR15: The system prevents creation of a todo with an empty description
 FR16: Todo creation time is recorded and associated with each item
-FR17: The UI reflects write operations (create, complete, delete) immediately, before server confirmation
+FR17: The UI reflects write operations (create, complete, delete, category/priority/deadline changes) immediately, before server confirmation
 FR18: If a write operation fails server-side, the UI rolls back to the previous state and notifies the user
 FR19: Completed todos are visually distinguished from active todos at a glance
 FR20: The application displays a purposeful empty state when the user has no todos
 FR21: The application displays a loading state while data is being fetched
 FR22: The application displays an error state when a data operation fails unrecoverably
-FR23: The application layout is functional and polished on mobile and desktop viewports
+FR23: The application layout is fully functional on viewports from 375px to 1920px with no horizontal scrolling, no overlapping elements, and all interactive targets at least 44x44px on mobile
 FR24: Core flows are operable via keyboard navigation
 FR25: The frontend is buildable and runnable as a standalone Docker container
 FR26: The backend is buildable and runnable as a standalone Docker container
@@ -46,6 +48,23 @@ FR27: A `docker-compose.yml` starts the full stack (frontend, backend, database)
 FR28: The local development setup supports hot reload for frontend and backend changes
 FR29: The frontend renders using standard DOM elements compatible with MCP-based browser inspection tools
 FR30: The repository includes a README with setup instructions, environment variable documentation, and local development steps
+FR31: An authenticated user can create a new category by providing a name
+FR32: An authenticated user can rename an existing category
+FR33: An authenticated user can delete a category; todos in that category revert to uncategorized
+FR34: An authenticated user can assign a todo to exactly one category, or leave it uncategorized
+FR35: An authenticated user can change or remove a todo's category assignment
+FR36: Categories are per-user — no user can see or modify another user's categories
+FR37: The system prevents creation of a category with an empty or duplicate name (per user)
+FR38: An authenticated user can set a deadline (date) on a todo at creation or afterward
+FR39: An authenticated user can change or remove a todo's deadline
+FR40: An authenticated user can set a priority level (1–5, where 1 is highest) on a todo at creation or afterward
+FR41: An authenticated user can change or remove a todo's priority level
+FR42: Deadline and priority are optional — todos without them remain valid
+FR43: The application provides a "Due This Week" view that displays all active (non-completed) todos with deadlines within the next 7 calendar days
+FR44: Todos in the "Due This Week" view are sorted by priority (highest first); todos without a priority appear after prioritized items
+FR45: The "Due This Week" view is accessible within 1 interaction from the main todo list
+FR46: Todos display their category, deadline, and priority visually when set
+FR47: Todos with deadlines in the past (overdue) are visually flagged
 
 ### NonFunctional Requirements
 
@@ -62,6 +81,7 @@ NFR10: CORS must be configured to allow only the expected frontend origin in pro
 NFR11: Todo data must persist across user sessions, browser restarts, and container restarts
 NFR12: The database must use a persistent volume in the Docker setup — no data loss on `docker-compose down`
 NFR13: The application must handle backend unavailability gracefully — the frontend must display an error state rather than crashing
+NFR14: The "Due This Week" query must return results within 500ms under normal single-user load, including filtering and priority sorting
 
 ### Additional Requirements
 
@@ -78,6 +98,19 @@ NFR13: The application must handle backend unavailability gracefully — the fro
 - Consistent API error format: `{ "detail": "Human-readable message", "code": "MACHINE_READABLE_CODE" }`
 - Naming conventions enforced: snake_case (Python/API JSON), camelCase (TypeScript), PascalCase (React components/types), kebab-case (frontend files, CSS properties)
 - Anti-patterns explicitly forbidden: JWT in localStorage, useEffect+useState for data fetching, response wrappers, `any` type in TypeScript, hardcoded config values
+- **New: Categories table** — `categories` (id, user_id FK, name, created_at) with unique constraint on (user_id, name); ON DELETE SET NULL for todos.category_id
+- **New: Todo model expansion** — category_id FK nullable, deadline date nullable, priority integer 1-5 nullable added to todos table
+- **New: Indexes** — `idx_categories_user_id`, `idx_todos_category_id`, `idx_todos_deadline` for query performance
+- **New: Category API** — GET/POST/PATCH/DELETE `/api/categories`; delete returns count of affected todos; rejects empty or duplicate names per user
+- **New: Todo API expansion** — PATCH `/api/todos/{id}` now accepts category_id, deadline, priority; POST `/api/todos` accepts optional category_id, deadline, priority
+- **New: Error codes** — `CATEGORY_NOT_FOUND`, `DUPLICATE_CATEGORY_NAME` added to API error format
+- **New: TanStack Query invalidation** — category deletion must invalidate both `["categories"]` and `["todos"]` query keys (cascade affects both)
+- **New: Client-side view filtering** — three views (All/This Week/By Deadline) as TanStack Query selectors on cached `["todos"]` data; no dedicated API endpoints per view
+- **New: View state** — tracked via URL query param (`?view=all|week|deadline`) for browser back/forward support
+- **New: use-categories hook** — useGetCategories, useCreateCategory, useRenameCategory, useDeleteCategory with three-step optimistic mutation pattern
+- **New: Frontend components** — ViewSwitcher, CategorySectionHeader, CategoryManagementPanel, PriorityIndicator, DeadlineLabel, DeadlineGroupHeader
+- **New: Separate API endpoints forbidden** — views must NOT have dedicated API endpoints; all filtering/sorting is client-side
+- **New: localStorage concerns** — category collapse state and FAB last-used selector values stored in localStorage, not server state
 
 ### UX Design Requirements
 
@@ -101,6 +134,20 @@ UX-DR17: Loading states — skeleton screens (not spinners) for initial list loa
 UX-DR18: Auth ↔ Main view transition — full-page transition (fade or slide depending on direction)
 UX-DR19: Toast notifications — bottom-center position, 3s auto-dismiss for general feedback, 4s for network errors
 UX-DR20: Typography implementation — Inter self-hosted via `@fontsource/inter`, type scale: display (28px/600), heading (20px/600), body (16px/400), body-medium (16px/500), label (13px/500), caption (12px/400); letter-spacing: -0.01em on display/heading, +0.02em on all-caps labels
+UX-DR21: ViewSwitcher — segmented tab bar (All | This Week | By Deadline), pill-style segments with accent fill on active/ghost on inactive, 150ms fade transition on view switch, active view stored in URL query param (?view=all|week|deadline), abbreviated labels on narrow viewports ("All" / "Week" / "Deadline")
+UX-DR22: CategorySectionHeader — collapsible section dividers in "All" view, category name (heading weight) + todo count badge (right-aligned) + collapse chevron (far right), smooth 200ms height collapse/expand animation, collapse state persisted in localStorage per category, 1px bottom border (--color-border), empty categories hidden
+UX-DR23: CategoryManagementPanel — slide-in panel from right (320px desktop, full-width sheet on mobile), triggered by gear icon in header, lists categories with inline rename (click-to-edit) + delete (ghost red icon), "Add category" input at top, inline delete confirmation ("This will uncategorize X todos. Remove?" with [Cancel][Remove]), frosted glass backdrop
+UX-DR24: PriorityIndicator — 3px solid left border on todo item in priority color (--color-priority-{1-5}), no border when unpriorized, clickable to open priority picker popover for inline editing
+UX-DR25: Priority color token system — 5-level colors: P1 red (#FF3B30), P2 orange (#FF9500), P3 yellow (#FFCC00), P4 blue (#0066FF), P5 gray (#98989D); dark mode variants: #FF453A, #FF9F0A, #FFD60A, #4D9FFF, #636366
+UX-DR26: DeadlineLabel — right-aligned within todo item, caption size (12px, --color-text-muted), smart formatting: "Today" (bold), "Tomorrow", day name (this week), short date (beyond), "Overdue · date" (red), clickable to open date picker popover for inline editing
+UX-DR27: Overdue treatment — todo item background tinted with --color-overdue-bg (5% opacity red #FF3B300D), deadline label in --color-overdue-text (red), priority left-border unchanged (independent signals)
+UX-DR28: DeadlineGroupHeader — temporal section dividers in "By Deadline" view: Overdue (red tint header), Today, Tomorrow, This Week, Later, No Deadline; same visual style as CategorySectionHeader; empty groups hidden
+UX-DR29: Extended FAB creation panel — compact row of optional selectors below text input: Category dropdown, Priority dropdown (with colored dot preview), Date picker; all optional (Enter with only text creates plain todo); selectors remember last-used values within session (cleared on page refresh); stack vertically below 400px viewport
+UX-DR30: Inline edit pattern — click/tap on priority indicator, deadline label, or category chip triggers compact popover anchored to clicked element, same dropdown/picker as FAB panel, optimistic update on selection, Escape or click-outside dismisses without change
+UX-DR31: Category chip on todo items — shown in non-"All" views (This Week, By Deadline), caption size, --color-bg-subtle background, --color-text-muted text, 4px border-radius, 4px 8px padding, no chip for uncategorized todos
+UX-DR32: "Due This Week" view layout — flat list (no section dividers, no category grouping), only active (non-completed) todos with deadlines within 7 calendar days, sorted by priority (P1→P5→no priority) then by deadline (earliest first) within same priority, each todo shows priority indicator + deadline label + category chip, empty state: "Nothing due this week" with subtle checkmark
+UX-DR33: "By Deadline" view layout — grouped by temporal proximity: Overdue, Today, Tomorrow, This Week, Later, No Deadline; within each group sorted by priority (P1 first); each todo shows priority indicator + category chip + full date; empty groups hidden; completed section at bottom
+UX-DR34: "All Todos" view with categories — category section dividers (collapsible), uncategorized section at top, completed section at bottom regardless of category, sections default expanded, collapse state persisted in localStorage, empty categories hidden
 
 ### FR Coverage Map
 
@@ -113,14 +160,14 @@ FR6: Epic 2 — JWT token issuance in httpOnly cookie
 FR7: Epic 2 — Session expiry redirect to login without data loss
 FR8: Epic 2 — Post-reauthentication redirect to todo list
 FR9: Epic 2 — Protected API endpoint validation
-FR10: Epic 3 — Todo creation API endpoint and UI
+FR10: Epic 3 (base) + Epic 5 (category selector) + Epic 6 (priority/deadline selectors) — Todo creation with optional metadata
 FR11: Epic 3 — Todo list view (active + completed)
 FR12: Epic 3 — Mark todo as complete
 FR13: Epic 3 — Mark completed todo as active (undo)
 FR14: Epic 3 — Delete todo permanently
 FR15: Epic 3 — Empty description validation
 FR16: Epic 3 — Todo creation timestamp
-FR17: Epic 3 — Optimistic UI updates on write operations
+FR17: Epic 3 (base) + Epic 5 (category mutations) + Epic 6 (priority/deadline mutations) — Optimistic UI updates on all write operations
 FR18: Epic 3 — UI rollback on server-side failure with notification
 FR19: Epic 3 — Visual distinction between active and completed todos
 FR20: Epic 3 — Empty state display when no todos
@@ -134,6 +181,24 @@ FR27: Epic 1 — docker-compose.yml single-command start
 FR28: Epic 1 — Hot reload for frontend and backend
 FR29: Epic 1 — MCP-compatible standard DOM rendering
 FR30: Epic 1 — README with setup documentation
+FR31: Epic 5 — Create category
+FR32: Epic 5 — Rename category
+FR33: Epic 5 — Delete category with uncategorize cascade
+FR34: Epic 5 — Assign todo to category
+FR35: Epic 5 — Change or remove todo's category
+FR36: Epic 5 — Per-user category isolation
+FR37: Epic 5 — Prevent empty or duplicate category names
+FR38: Epic 6 — Set deadline on todo
+FR39: Epic 6 — Change or remove deadline
+FR40: Epic 6 — Set priority level (1–5) on todo
+FR41: Epic 6 — Change or remove priority
+FR42: Epic 6 — Deadline and priority are optional
+FR43: Epic 7 — "Due This Week" view (active todos with deadlines within 7 days)
+FR44: Epic 7 — Due This Week sorted by priority (highest first)
+FR45: Epic 7 — Due This Week accessible within 1 interaction
+FR46: Epic 5 (category display) + Epic 6 (priority/deadline display) — Visual metadata on todo items
+FR47: Epic 6 — Overdue flagging for past-deadline todos
+NFR14: Epic 7 — Due This Week query within 500ms
 
 ## Epic List
 
@@ -160,6 +225,26 @@ After this epic, the application delivers a crafted, Apple-inspired experience w
 **FRs covered:** FR23, FR24
 **NFRs addressed:** NFR2 (page load < 3s), NFR13 (graceful backend unavailability)
 **UX-DRs covered:** UX-DR1 through UX-DR20
+
+### Epic 5: Category Organization
+After this epic, an authenticated user can create, rename, and delete custom categories, assign any todo to a category, and see their todos organized into collapsible category sections in the main list view. The category management panel provides full CRUD, and the FAB includes a category selector for new todos.
+**FRs covered:** FR31, FR32, FR33, FR34, FR35, FR36, FR37, FR46 (category display)
+**NFRs addressed:** NFR7 (per-user category isolation)
+**UX-DRs covered:** UX-DR22, UX-DR23, UX-DR29 (category selector), UX-DR30 (category inline edit), UX-DR31, UX-DR34
+**Additional:** Categories table + Alembic migration, category CRUD API, todo table expansion (category_id, deadline, priority fields), use-categories hook with optimistic mutations
+
+### Epic 6: Priority & Deadline Management
+After this epic, an authenticated user can set priority levels (1–5) and deadlines on any todo, see expressive priority color indicators and smart deadline labels, spot overdue items at a glance, and use the fully extended FAB creation panel with all metadata selectors.
+**FRs covered:** FR38, FR39, FR40, FR41, FR42, FR46 (priority/deadline display), FR47
+**UX-DRs covered:** UX-DR24, UX-DR25, UX-DR26, UX-DR27, UX-DR29 (priority/deadline selectors), UX-DR30 (priority/deadline inline edit)
+**Additional:** Priority color tokens (light/dark), priority indicator component, deadline label with smart formatting, overdue treatment, extended FAB selectors, inline editing popovers
+
+### Epic 7: Multi-View Navigation
+After this epic, the application provides three views — All Todos, Due This Week, and By Deadline — letting the user see their tasks from different perspectives with a single-tap view switcher. The Due This Week view surfaces upcoming priority-sorted tasks, and the By Deadline view groups todos by temporal proximity.
+**FRs covered:** FR43, FR44, FR45
+**NFRs addressed:** NFR14 (Due This Week query < 500ms)
+**UX-DRs covered:** UX-DR21, UX-DR28, UX-DR32, UX-DR33
+**Additional:** View switcher (segmented tab bar), client-side TanStack Query selectors for filtering/sorting, URL query param view state, deadline group headers, view-specific empty states
 
 ---
 
@@ -826,3 +911,309 @@ So that the app is inclusive and usable regardless of input method.
 **Given** the user has `prefers-reduced-motion` enabled
 **When** animations would normally play
 **Then** all spring and transition animations are disabled and state changes are instant (UX-DR16)
+
+---
+
+## Epic 5: Category Organization
+
+After this epic, an authenticated user can create, rename, and delete custom categories, assign any todo to a category, and see their todos organized into collapsible category sections in the main list view. The category management panel provides full CRUD, and the FAB includes a category selector for new todos.
+
+### Story 5.1: Category & Todo Metadata Backend
+
+As a developer,
+I want category CRUD API endpoints and an expanded todo model with category, deadline, and priority fields,
+So that the frontend can build organizational features on a complete backend.
+
+**Acceptance Criteria:**
+
+**Given** the Category SQLModel (id, user_id FK, name, created_at) with unique constraint on (user_id, name) and its Alembic migration
+**When** the migration runs
+**Then** the `categories` table is created with index `idx_categories_user_id` on user_id, and the `todos` table is expanded with: `category_id` (FK to categories, nullable, ON DELETE SET NULL), `deadline` (date, nullable), `priority` (integer 1-5, nullable), plus indexes `idx_todos_category_id` and `idx_todos_deadline`
+
+**Given** an authenticated user sends GET /api/categories
+**When** the server processes the request
+**Then** it returns an array of all categories belonging to that user, ordered by name (FR36)
+
+**Given** an authenticated user sends POST /api/categories with `{ "name": "Work" }`
+**When** the server processes the request
+**Then** it creates the category scoped to the user and returns the created object (FR31)
+
+**Given** an authenticated user sends POST /api/categories with an empty name or a name that already exists for that user
+**When** the server processes the request
+**Then** it returns 409 with `{ "detail": "...", "code": "DUPLICATE_CATEGORY_NAME" }` or 422 with `VALIDATION_ERROR` (FR37)
+
+**Given** an authenticated user owns a category
+**When** they send PATCH /api/categories/{id} with `{ "name": "Personal" }`
+**Then** the server renames the category and returns the updated object; rejects empty or duplicate names (FR32, FR37)
+
+**Given** an authenticated user owns a category with 5 assigned todos
+**When** they send DELETE /api/categories/{id}
+**Then** the server deletes the category, sets `category_id = NULL` on all 5 affected todos, and returns `{ "affected_todos": 5 }` (FR33)
+
+**Given** an authenticated user sends POST /api/todos with `{ "description": "Buy milk", "category_id": 1, "deadline": "2026-04-20", "priority": 2 }`
+**When** the server processes the request
+**Then** it creates the todo with all optional fields populated and returns the full object including category_id, deadline, and priority (FR10 expanded)
+
+**Given** an authenticated user sends PATCH /api/todos/{id} with `{ "category_id": 2 }` or `{ "category_id": null }`
+**When** the server processes the request
+**Then** it updates the category assignment (or removes it) and returns the updated todo (FR34, FR35)
+
+**Given** an authenticated user attempts to access or modify another user's categories
+**When** the server processes the request
+**Then** it returns 404 with `CATEGORY_NOT_FOUND` — no data leakage (FR36)
+
+### Story 5.2: Category Management Frontend
+
+As an authenticated user,
+I want a category management panel where I can create, rename, and delete my categories,
+So that I can organize my task structure.
+
+**Acceptance Criteria:**
+
+**Given** the `use-categories` hook
+**When** it is initialized
+**Then** it provides useGetCategories (query key `["categories"]`), useCreateCategory, useRenameCategory, and useDeleteCategory — each mutation following the three-step optimistic pattern (onMutate → onError → onSettled)
+
+**Given** the app header
+**When** it renders for an authenticated user
+**Then** a gear icon is displayed that opens the CategoryManagementPanel (UX-DR23)
+
+**Given** the user clicks the gear icon
+**When** the CategoryManagementPanel opens
+**Then** it slides in from the right (320px on desktop, full-width sheet on mobile) with a frosted glass backdrop, showing all categories with an "Add category" input at the top (UX-DR23)
+
+**Given** the user types a category name and submits in the panel
+**When** the category is created
+**Then** it appears immediately in the list (optimistic update), the server syncs in the background, and the input clears (FR31, FR17 expanded)
+
+**Given** the user clicks a category name in the panel
+**When** inline rename activates (click-to-edit)
+**Then** the name becomes an editable input; on blur or Enter the rename is saved optimistically; empty or duplicate names show inline validation error (FR32, FR37)
+
+**Given** the user clicks the delete button on a category
+**When** the inline confirmation appears ("This will uncategorize X todos. Remove?" with [Cancel][Remove])
+**Then** clicking [Remove] deletes the category optimistically, invalidates both `["categories"]` and `["todos"]` query keys, and the affected todo count reflects the server response (FR33)
+
+**Given** the CategoryManagementPanel is open
+**When** the user clicks outside or presses Escape
+**Then** the panel closes with a reverse slide animation
+
+### Story 5.3: Category Assignment, Display & All View Sections
+
+As an authenticated user,
+I want to assign categories to todos and see my list organized into collapsible category sections,
+So that I can visually group and manage related tasks.
+
+**Acceptance Criteria:**
+
+**Given** the FAB creation panel is expanded
+**When** it renders
+**Then** a category dropdown selector appears in the optional selectors row below the text input; selecting a category is optional — submitting with only text creates an uncategorized todo (UX-DR29, FR34)
+
+**Given** the user creates a todo with a category selected in the FAB
+**When** the todo is created
+**Then** it appears in the correct category section in the All view (FR34, FR10 expanded)
+
+**Given** the FAB selectors
+**When** the user creates multiple todos with the same category
+**Then** the category selector remembers the last-used value within the session; the memory is cleared on page refresh (UX-DR29)
+
+**Given** a todo item in a non-"All" view (Due This Week or By Deadline)
+**When** it has a category assigned
+**Then** a category chip is displayed (caption size, `--color-bg-subtle` background, `--color-text-muted` text, 4px border-radius); no chip for uncategorized todos (UX-DR31, FR46)
+
+**Given** a todo item's category chip (in non-"All" views) or category assignment
+**When** the user clicks it
+**Then** a compact popover opens anchored to the element with a category dropdown (same as FAB), selection applies optimistically, Escape or click-outside dismisses without change (UX-DR30, FR35)
+
+**Given** the All Todos view
+**When** it renders with categorized todos
+**Then** todos are grouped under collapsible CategorySectionHeader dividers: each header shows category name (heading weight), todo count badge (right-aligned), and collapse chevron (far right); uncategorized todos appear in an "Uncategorized" section at the top; completed todos remain in the "Completed" section at the bottom regardless of category; empty categories are hidden (UX-DR22, UX-DR34)
+
+**Given** a CategorySectionHeader
+**When** the user clicks the collapse chevron
+**Then** the section collapses/expands with a smooth 200ms height animation; collapse state is persisted in localStorage per category ID (UX-DR22)
+
+**Given** a category is deleted (via management panel)
+**When** affected todos lose their category_id
+**Then** they animate to the "Uncategorized" section in the All view (UX-DR34)
+
+---
+
+## Epic 6: Priority & Deadline Management
+
+After this epic, an authenticated user can set priority levels (1–5) and deadlines on any todo, see expressive priority color indicators and smart deadline labels, spot overdue items at a glance, and use the fully extended FAB creation panel with all metadata selectors.
+
+### Story 6.1: Priority System — Tokens, Indicator & Inline Edit
+
+As an authenticated user,
+I want to set priority levels (1–5) on my todos and see expressive color indicators,
+So that I can visually distinguish urgency at a glance.
+
+**Acceptance Criteria:**
+
+**Given** the design token system (`src/index.css`)
+**When** priority color tokens are implemented
+**Then** CSS custom properties define 5 priority colors for both light and dark modes: `--color-priority-1` (red #FF3B30 / #FF453A), `--color-priority-2` (orange #FF9500 / #FF9F0A), `--color-priority-3` (yellow #FFCC00 / #FFD60A), `--color-priority-4` (blue #0066FF / #4D9FFF), `--color-priority-5` (gray #98989D / #636366) (UX-DR25)
+
+**Given** a todo item with a priority level set
+**When** it renders
+**Then** a PriorityIndicator displays as a 3px solid left border in the corresponding `--color-priority-{n}` color; todos without a priority have no left border (UX-DR24, FR46)
+
+**Given** the FAB creation panel is expanded
+**When** it renders
+**Then** a priority dropdown selector appears in the optional selectors row, showing colored dots with labels (e.g. "P1 Urgent", "P2 High"); selection is optional — submitting without priority creates an unprioritized todo (UX-DR29, FR40, FR42)
+
+**Given** the user creates multiple todos with the same priority
+**When** the FAB re-opens
+**Then** the priority selector remembers the last-used value within the session (UX-DR29)
+
+**Given** a todo item's priority indicator
+**When** the user clicks it
+**Then** a compact popover opens anchored to the indicator with the priority dropdown (same as FAB); selecting a new level applies optimistically via useUpdateTodo; Escape or click-outside dismisses without change (UX-DR30, FR41)
+
+**Given** a todo with priority set
+**When** the user selects "None" or clears the priority in the inline edit popover
+**Then** the priority is removed optimistically, the left border disappears, and the server syncs in the background (FR41, FR42)
+
+**Given** any priority change (set, change, or remove)
+**When** the mutation fires
+**Then** the three-step optimistic pattern applies: onMutate (snapshot + optimistic cache write), onError (rollback + toast), onSettled (invalidate `["todos"]`) (FR17 expanded)
+
+**Given** the priority indicator border color
+**When** priority changes
+**Then** the left border color transitions smoothly over 150ms (UX feedback pattern)
+
+### Story 6.2: Deadline System — Label, Overdue Treatment & Inline Edit
+
+As an authenticated user,
+I want to set deadlines on my todos, see smart date labels, and have overdue items visually flagged,
+So that I can track time-sensitive work and never miss a due date.
+
+**Acceptance Criteria:**
+
+**Given** the design token system
+**When** overdue tokens are implemented
+**Then** CSS custom properties define `--color-overdue-text` (#FF3B30 / #FF453A) and `--color-overdue-bg` (#FF3B300D / #FF453A0D, 5% opacity) for both light and dark modes (UX-DR27)
+
+**Given** a todo item with a deadline set
+**When** it renders
+**Then** a DeadlineLabel displays right-aligned within the todo item at caption size (12px, `--color-text-muted`), with smart formatting: "Today" (slightly bold), "Tomorrow", day name for this week (e.g. "Thursday"), short date for beyond (e.g. "Apr 23"), or "Overdue · Apr 10" in red for past deadlines (UX-DR26, FR46)
+
+**Given** a todo with a deadline in the past (overdue)
+**When** it renders
+**Then** the deadline label uses `--color-overdue-text` (red), the todo item background is tinted with `--color-overdue-bg` (5% opacity red), and the priority left-border indicator remains unchanged — overdue and priority are independent visual signals (UX-DR27, FR47)
+
+**Given** the FAB creation panel is expanded
+**When** it renders
+**Then** a date picker selector appears in the optional selectors row; selection is optional — submitting without a deadline creates a todo with no deadline (UX-DR29, FR38, FR42)
+
+**Given** the user selects a date in the FAB date picker
+**When** quick-select options are displayed above the calendar
+**Then** "Today", "Tomorrow", "Next Week", and "Clear" options are available for fast selection (UX-DR26)
+
+**Given** a todo item's deadline label
+**When** the user clicks it
+**Then** a compact popover opens anchored to the label with the same date picker as the FAB panel; selecting a new date applies optimistically; Escape or click-outside dismisses without change (UX-DR30, FR39)
+
+**Given** a todo with a deadline set
+**When** the user selects "Clear" in the inline date picker or removes the deadline
+**Then** the deadline is removed optimistically, the label disappears, and any overdue treatment is cleared (FR39, FR42)
+
+**Given** any deadline change (set, change, or remove)
+**When** the mutation fires
+**Then** the three-step optimistic pattern applies: onMutate (snapshot + optimistic cache write), onError (rollback + toast), onSettled (invalidate `["todos"]`) (FR17 expanded)
+
+**Given** a todo without a deadline
+**When** it renders
+**Then** no deadline label is shown — the todo is a first-class citizen without metadata (FR42)
+
+---
+
+## Epic 7: Multi-View Navigation
+
+After this epic, the application provides three views — All Todos, Due This Week, and By Deadline — letting the user see their tasks from different perspectives with a single-tap view switcher. The Due This Week view surfaces upcoming priority-sorted tasks, and the By Deadline view groups todos by temporal proximity.
+
+### Story 7.1: View Switcher & Due This Week View
+
+As an authenticated user,
+I want a view switcher and a "Due This Week" view that shows my upcoming priority-sorted tasks,
+So that I can focus on what matters most this week.
+
+**Acceptance Criteria:**
+
+**Given** the main view for an authenticated user
+**When** it renders
+**Then** a ViewSwitcher component (segmented tab bar) appears below the app header with three pill-style segments: "All" | "This Week" | "By Deadline"; the active tab uses accent fill background with white text; inactive tabs use ghost style with muted text (UX-DR21)
+
+**Given** the user taps a view tab
+**When** the view switches
+**Then** the content area transitions with a 150ms fade — no page navigation, no API call; the switch is a client-side filter on cached `["todos"]` data (UX-DR21)
+
+**Given** the active view
+**When** the URL is checked
+**Then** the view state is persisted as a URL query param (`?view=all|week|deadline`); browser back/forward navigates between previously visited views (UX-DR21)
+
+**Given** a narrow viewport (mobile)
+**When** the ViewSwitcher renders
+**Then** tab labels abbreviate to "All" / "Week" / "Deadline" to fit; all three remain visible (UX-DR21)
+
+**Given** the user selects the "This Week" tab
+**When** the Due This Week view renders
+**Then** it displays a flat list (no section dividers, no category grouping) of only active (non-completed) todos with deadlines within the next 7 calendar days (FR43, UX-DR32)
+
+**Given** the Due This Week view has todos
+**When** they are sorted
+**Then** the order is: priority P1 first → P2 → P3 → P4 → P5 → no priority last; within the same priority level, sorted by deadline earliest first (FR44, UX-DR32)
+
+**Given** a todo in the Due This Week view
+**When** it renders
+**Then** it shows its priority indicator (left border), deadline label, and category chip (UX-DR32, FR46)
+
+**Given** the user has no active todos due within 7 days
+**When** the Due This Week view renders
+**Then** an empty state displays "Nothing due this week" with a subtle checkmark (UX-DR32)
+
+**Given** the Due This Week view
+**When** it returns results
+**Then** the client-side filtering and sorting completes in under 500ms (NFR14) — this is a TanStack Query `select` transform on cached data, expected to be sub-millisecond
+
+**Given** the "All" tab is selected
+**When** the view renders
+**Then** it displays the existing category-section layout from Epic 5 — this is the default view (FR45, UX-DR34)
+
+### Story 7.2: By Deadline View
+
+As an authenticated user,
+I want a "By Deadline" view that groups my todos by temporal proximity,
+So that I can see a time-based picture of what's coming up.
+
+**Acceptance Criteria:**
+
+**Given** the user selects the "By Deadline" tab
+**When** the view renders
+**Then** all active todos are displayed grouped under DeadlineGroupHeader section dividers with temporal labels: "Overdue", "Today", "Tomorrow", "This Week", "Later", "No Deadline" (UX-DR28, UX-DR33)
+
+**Given** the "Overdue" group in the By Deadline view
+**When** it contains todos with past deadlines
+**Then** the DeadlineGroupHeader has a subtle red background tint to indicate urgency (UX-DR28)
+
+**Given** todos within any temporal group
+**When** they are sorted
+**Then** the order is by priority (P1 first → P5 → no priority last) within each group (UX-DR33)
+
+**Given** a todo in the By Deadline view
+**When** it renders
+**Then** it shows its priority indicator (left border), category chip, and full date (UX-DR33, FR46)
+
+**Given** a temporal group has no todos
+**When** the By Deadline view renders
+**Then** that group and its header are hidden — no empty sections clutter the view (UX-DR33)
+
+**Given** the By Deadline view
+**When** completed todos exist
+**Then** they appear in a "Completed" section at the bottom of the view, consistent with the All view behavior (UX-DR33)
+
+**Given** the DeadlineGroupHeader component
+**When** it renders
+**Then** it uses the same visual style as CategorySectionHeader (heading weight, count badge, 1px bottom border) but with temporal labels instead of category names (UX-DR28)

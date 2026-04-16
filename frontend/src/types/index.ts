@@ -26,7 +26,7 @@ export type ApiError = {
 }
 
 // ---------------------------------------------------------------------------
-// Todo types (Story 3.2+)
+// Todo types (Story 3.2+, expanded Story 5.1)
 // ---------------------------------------------------------------------------
 
 export type Todo = {
@@ -34,14 +34,42 @@ export type Todo = {
   userId: number
   description: string
   isCompleted: boolean
+  categoryId: number | null
+  deadline: string | null // ISO 8601 date string "2026-04-20"
+  priority: number | null // 1-5, null = no priority
   createdAt: string // ISO 8601 UTC
 }
 
 export type CreateTodoRequest = {
   description: string
+  categoryId?: number | null
+  deadline?: string | null
+  priority?: number | null
 }
 
 export type UpdateTodoRequest = {
   isCompleted?: boolean
   description?: string
+  categoryId?: number | null
+  deadline?: string | null
+  priority?: number | null
+}
+
+// ---------------------------------------------------------------------------
+// Category types (Story 5.1)
+// ---------------------------------------------------------------------------
+
+export type Category = {
+  id: number
+  userId: number
+  name: string
+  createdAt: string
+}
+
+export type CreateCategoryRequest = {
+  name: string
+}
+
+export type RenameCategoryRequest = {
+  name: string
 }

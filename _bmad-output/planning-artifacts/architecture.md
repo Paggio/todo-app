@@ -3,6 +3,10 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-04-14'
+lastRevised: '2026-04-16'
+revisionHistory:
+  - date: '2026-04-16'
+    changes: 'Added categories table and API, deadline/priority fields on todos, category router, new frontend components (ViewSwitcher, CategorySectionHeader, CategoryManagementPanel, PriorityIndicator, DeadlineLabel, DeadlineGroupHeader), use-categories hook, updated implementation sequence, error codes, requirements mapping for FR31-FR47 and NFR14.'
 inputDocuments: ['_bmad-output/planning-artifacts/prd.md', '_bmad-output/planning-artifacts/ux-design-specification.md']
 workflowType: 'architecture'
 project_name: 'bmad_nf_todo_app'
@@ -19,33 +23,41 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 ### Requirements Overview
 
 **Functional Requirements:**
-30 FRs across 5 domains:
+47 FRs across 8 domains:
 - **User Account Management (FR1-5):** Registration, login, logout, route protection, per-user data isolation
 - **Authentication & Session Handling (FR6-9):** Token issuance, session expiry with graceful redirect, protected API endpoints
 - **Todo Management (FR10-16):** Full CRUD (create, read, complete/uncomplete, delete), empty description validation, timestamp tracking
-- **User Interface & Experience (FR17-24):** Optimistic updates with rollback, visual distinction for completed items, empty/loading/error states, responsive layout, keyboard navigation
+- **Category Management (FR31-37):** User-created categories with CRUD (create, rename, delete), per-todo assignment (exactly one or uncategorized), per-user isolation, duplicate/empty name prevention
+- **Deadline & Priority (FR38-42):** Optional deadline (date) per todo, optional priority level (1–5, where 1 is highest) per todo, set/change/remove at creation or afterward
+- **Due This Week View (FR43-45):** Filtered view of active todos with deadlines within 7 calendar days, sorted by priority (highest first, unprioritized last), accessible within 1 interaction from main view
+- **User Interface & Experience (FR17-24, FR46-47):** Optimistic updates with rollback, visual distinction for completed items, empty/loading/error states, responsive layout, keyboard navigation, visual display of category/deadline/priority metadata, overdue flagging
 - **Developer Operations (FR25-30):** Separate Docker containers for frontend/backend, docker-compose single-command start, hot reload, MCP-compatible DOM, documented README
 
-Architecturally, auth and optimistic UI are the two areas with the most design surface. The CRUD itself is straightforward.
+Architecturally, auth, the organizational layer (categories + priorities + deadlines + views), and optimistic UI are the three areas with the most design surface. The base CRUD itself is straightforward.
 
 **Non-Functional Requirements:**
-13 NFRs that will shape architectural decisions:
+14 NFRs that will shape architectural decisions:
 - **Performance (NFR1-4):** Optimistic updates < 100ms, initial load < 3s, API responses < 500ms, non-blocking UI thread
 - **Security (NFR5-10):** bcrypt (cost >= 10), signed JWT with expiry, per-user data isolation on every endpoint, HTTPS in production, no sensitive data in logs, CORS restricted to frontend origin
-- **Reliability (NFR11-13):** Data persistence across sessions/restarts, persistent Docker volume, graceful frontend handling of backend unavailability
+- **Reliability (NFR11-14):** Data persistence across sessions/restarts, persistent Docker volume, graceful frontend handling of backend unavailability, "Due This Week" query within 500ms including filtering and priority sorting
 
 **UX-Driven Architectural Requirements:**
 - Design system: Tailwind CSS + shadcn/ui (Radix primitives) — prescribes the component framework
 - Animation: Spring-physics easing, check-draw path animation, layout reflow animation — requires CSS transitions + JS class toggling (no animation library)
 - Theming: Light/dark mode via CSS custom properties with `class` strategy — requires design token architecture
-- Frosted glass: `backdrop-filter: blur()` on auth screen and FAB expansion — limited to two surfaces for performance
+- Frosted glass: `backdrop-filter: blur()` on auth screen, FAB expansion, and category management panel — limited to elevated surfaces for performance
 - Accessibility: Best-effort WCAG AA — semantic HTML, keyboard nav, focus management, `prefers-reduced-motion` support
+- Three-view navigation: All Todos / Due This Week / By Deadline — segmented tab bar, client-side filtering/sorting (no separate API endpoints per view)
+- Priority colors: 5-level color system (red, orange, yellow, blue, gray) for left-border indicators on todo items — requires design token expansion
+- Overdue treatment: Red tint background + red deadline label for past-due items — requires overdue color tokens
+- Category section dividers: Collapsible sections in "All" view with collapse state persisted in localStorage
+- Inline editing: Popovers anchored to priority/deadline/category elements for in-place metadata editing
 
 **Scale & Complexity:**
 
 - Primary domain: Full-stack web (SPA + REST API)
-- Complexity level: Low-medium
-- Estimated architectural components: ~8-10 (Auth module, API layer, DB layer, State management, UI component library, Docker infrastructure, Routing, Error handling)
+- Complexity level: Low-medium (increased slightly from base CRUD by the organizational layer)
+- Estimated architectural components: ~12-14 (Auth module, API layer, DB layer, Category management, State management, View filtering/sorting, UI component library, Docker infrastructure, Routing, Error handling, Inline editing, Design tokens)
 
 ### Technical Constraints & Dependencies
 
@@ -59,10 +71,12 @@ Architecturally, auth and optimistic UI are the two areas with the most design s
 ### Cross-Cutting Concerns Identified
 
 - **Authentication/Authorization** — touches every API endpoint and every frontend route; the single most pervasive concern
-- **Error handling & optimistic rollback** — spans frontend state management and API communication; requires consistent patterns
-- **Light/dark theming** — affects every visual component; must be token-driven from foundation
+- **Per-user data isolation** — now spans three data entities (users, todos, categories); every category and todo query must be scoped by `user_id`
+- **Error handling & optimistic rollback** — spans frontend state management and API communication; now includes category mutations and metadata changes in addition to todo CRUD
+- **Light/dark theming** — affects every visual component including new priority colors and overdue tokens; must be token-driven from foundation
 - **Containerization** — shapes project structure, build process, environment configuration, and local development workflow
-- **Responsive layout** — mobile-first approach affects component sizing, spacing, and interaction patterns throughout
+- **Responsive layout** — mobile-first approach affects component sizing, spacing, and interaction patterns; FAB selectors stack vertically on narrow viewports; category management panel goes full-width sheet on mobile
+- **View filtering/sorting** — three-view architecture (All/This Week/By Deadline) applies client-side filtering and sorting to the same cached data; affects how TanStack Query results are consumed across multiple components
 
 ## Starter Template Evaluation
 
@@ -176,8 +190,16 @@ pip install "fastapi[standard]" sqlmodel alembic psycopg2-binary pyjwt "passlib[
 - **Database:** PostgreSQL (user requirement)
 - **ORM:** SQLModel — dual-purpose models serving as both DB table definitions and Pydantic request/response schemas; drops to raw SQLAlchemy when needed
 - **Migrations:** Alembic with autogenerate from SQLModel metadata; migrations run on container startup
-- **Schema:** Two tables — `users` (id, email, hashed_password, created_at) and `todos` (id, user_id FK, description, is_completed, created_at)
-- **Caching:** None required — single-user scale; PostgreSQL handles query volume trivially
+- **Schema:** Three tables:
+  - `users` (id, email, hashed_password, created_at)
+  - `categories` (id, user_id FK, name, created_at) — per-user categories; unique constraint on (user_id, name)
+  - `todos` (id, user_id FK, description, is_completed, category_id FK nullable, deadline date nullable, priority integer 1-5 nullable, created_at) — category_id references categories with ON DELETE SET NULL
+- **Indexes:**
+  - `idx_categories_user_id` on `categories.user_id` — for listing user's categories
+  - `idx_todos_category_id` on `todos.category_id` — for category-based queries and cascade behavior
+  - `idx_todos_deadline` on `todos.deadline` — for "Due This Week" filtering (satisfies NFR14)
+  - `idx_todos_user_id` on `todos.user_id` — for per-user todo listing (existing)
+- **Caching:** None required — single-user scale; PostgreSQL handles query volume trivially. The "Due This Week" view is computed client-side from the full todo list already in TanStack Query cache; no dedicated server-side query needed
 
 ### Authentication & Security
 
@@ -198,21 +220,29 @@ pip install "fastapi[standard]" sqlmodel alembic psycopg2-binary pyjwt "passlib[
   - `POST /api/auth/register` — create account, return user + set auth cookie
   - `POST /api/auth/login` — authenticate, return user + set auth cookie
   - `POST /api/auth/logout` — clear auth cookie
-  - `GET /api/todos` — list all todos for authenticated user
-  - `POST /api/todos` — create todo
-  - `PATCH /api/todos/{id}` — update todo (toggle completion, edit description)
+  - `GET /api/todos` — list all todos for authenticated user (includes category_id, deadline, priority fields)
+  - `POST /api/todos` — create todo (accepts optional category_id, deadline, priority)
+  - `PATCH /api/todos/{id}` — update todo (toggle completion, edit description, change category/deadline/priority)
   - `DELETE /api/todos/{id}` — delete todo
+  - `GET /api/categories` — list all categories for authenticated user
+  - `POST /api/categories` — create category (name required; rejects empty or duplicate names per user)
+  - `PATCH /api/categories/{id}` — rename category (rejects empty or duplicate names per user)
+  - `DELETE /api/categories/{id}` — delete category; sets `category_id = NULL` on all affected todos and returns count of affected todos
+- **View filtering:** The three-view architecture (All / This Week / By Deadline) is implemented entirely client-side. `GET /api/todos` returns the full list; the frontend filters and sorts in TanStack Query selectors. No dedicated server-side endpoints per view.
 - **Error format:** `{ "detail": "Human-readable message", "code": "MACHINE_READABLE_CODE" }` — extends FastAPI's default HTTPException with a `code` field for frontend error handling
+- **Error codes:** `INVALID_CREDENTIALS`, `EMAIL_ALREADY_EXISTS`, `TODO_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `DUPLICATE_CATEGORY_NAME`, `VALIDATION_ERROR`, `UNAUTHORIZED`
 - **API versioning:** None in v1 — no external consumers; prefix with `/api/v2` if needed later
 - **Documentation:** FastAPI auto-generated OpenAPI at `/docs` (Swagger UI) and `/redoc`
 
 ### Frontend Architecture
 
 - **State management:** TanStack Query v5 (~5.99.x) for all server state — caching, background refetching, optimistic updates, and error rollback handled declaratively via `useMutation` hooks. React Context for auth state only (current user). No global state library.
-- **Optimistic update pattern:** TanStack Query `useMutation` with `onMutate` (snapshot + optimistic cache write) → `onError` (rollback to snapshot) → `onSettled` (revalidate from server). Directly satisfies FR17/FR18.
-- **Routing:** React Router v7 (~7.14.x) — two routes: `/login` (public) and `/` (protected, redirects to login if unauthenticated). Auth guard via a wrapper component that checks auth context.
+- **Optimistic update pattern:** TanStack Query `useMutation` with `onMutate` (snapshot + optimistic cache write) → `onError` (rollback to snapshot) → `onSettled` (revalidate from server). Applies to all todo mutations (CRUD, category/priority/deadline changes) and all category mutations. Directly satisfies FR17/FR18.
+- **Client-side view filtering:** The three views (All / This Week / By Deadline) are implemented as TanStack Query `select` transforms or derived state from the `["todos"]` query cache. No separate API calls per view. View state tracked via URL query param (`?view=all|week|deadline`) for browser back/forward support.
+- **Routing:** React Router v7 (~7.14.x) — two routes: `/login` (public) and `/` (protected, redirects to login if unauthenticated). Auth guard via a wrapper component that checks auth context. Active view within `/` is managed via URL search params, not separate routes.
 - **HTTP client:** Native `fetch` wrapped in a thin utility (`api.ts`) with `credentials: 'include'` for httpOnly cookie auth. No axios — the API surface is small and fetch handles cookies natively.
 - **401 handling:** The fetch wrapper intercepts 401 responses globally, clears auth context, and redirects to `/login` (satisfying FR7/FR8).
+- **Local UI state:** Category section collapse state and FAB last-used selectors stored in localStorage — not server state, not TanStack Query. Collapse state keyed by category ID; FAB memory cleared on page refresh.
 
 ### Infrastructure & Deployment
 
@@ -228,17 +258,24 @@ pip install "fastapi[standard]" sqlmodel alembic psycopg2-binary pyjwt "passlib[
 
 **Implementation Sequence:**
 1. Project scaffolding (frontend + backend + docker-compose)
-2. Database models + Alembic migration setup
+2. Database models + Alembic migration setup (users, todos, categories)
 3. Auth endpoints (register, login, logout) + JWT cookie middleware
-4. Todo CRUD API endpoints
-5. Frontend auth flow (login/register screens, auth context, route guard)
-6. Frontend todo management (TanStack Query hooks, optimistic updates, UI components)
-7. Error handling, loading states, polish
+4. Todo CRUD API endpoints (with category_id, deadline, priority fields)
+5. Category CRUD API endpoints (create, rename, delete with cascade)
+6. Frontend auth flow (login/register screens, auth context, route guard)
+7. Frontend todo management — base (TanStack Query hooks, optimistic updates, todo list, FAB)
+8. Frontend category management (use-categories hook, category management panel, category section headers)
+9. Frontend organizational features (priority indicators, deadline labels, extended FAB with selectors, inline editing)
+10. Frontend view architecture (view switcher, Due This Week filtering, By Deadline grouping)
+11. Error handling, loading states, empty states, polish
 
 **Cross-Component Dependencies:**
 - Auth cookie strategy ties frontend fetch config to backend CORS + cookie settings — must be wired together early
 - TanStack Query's optimistic update pattern depends on the API error format being consistent — error format must be established before frontend mutation hooks
 - Docker-compose networking connects frontend → backend → db — the compose file is the integration point and should be validated as soon as both services exist
+- Category API must exist before frontend category assignment — the `GET /api/categories` response populates the category dropdowns in the FAB and inline edit popovers
+- Todo API response must include `category_id`, `deadline`, `priority` fields from the start — frontend view filtering depends on these fields being present in the cached data
+- The "Due This Week" view depends on both deadline and priority fields — both must be queryable before the view can be implemented
 
 ## Implementation Patterns & Consistency Rules
 
@@ -278,19 +315,19 @@ pip install "fastapi[standard]" sqlmodel alembic psycopg2-binary pyjwt "passlib[
 ### Structure Patterns
 
 **Frontend Organization (`src/`):**
-- `components/ui/` — shadcn/ui primitives (Button, Input, Checkbox, etc.)
-- `components/` — custom app components (TodoItem, FAB, AuthScreen, etc.)
-- `hooks/` — custom hooks (`use-todos.ts`, `use-auth.ts`)
+- `components/ui/` — shadcn/ui primitives (Button, Input, Checkbox, Select, Popover, DatePicker, Sheet, Badge, Tabs, etc.)
+- `components/` — custom app components (TodoItem, FAB, AuthScreen, ViewSwitcher, CategorySectionHeader, CategoryManagementPanel, PriorityIndicator, DeadlineLabel, DeadlineGroupHeader, etc.)
+- `hooks/` — custom hooks (`use-todos.ts`, `use-categories.ts`, `use-auth.ts`)
 - `lib/` — utilities (`api.ts`, `query-client.ts`)
 - `pages/` — route-level components (`login.tsx`, `home.tsx`)
 - `*.test.tsx` / `*.test.ts` — co-located next to source files
 
 **Backend Organization (`app/`):**
-- `routers/` — FastAPI route handlers (`auth.py`, `todos.py`)
-- `models/` — SQLModel definitions (`user.py`, `todo.py`)
+- `routers/` — FastAPI route handlers (`auth.py`, `todos.py`, `categories.py`)
+- `models/` — SQLModel definitions (`user.py`, `todo.py`, `category.py`)
 - `core/` — config, security, dependencies (`config.py`, `security.py`, `deps.py`)
 - `main.py` — app factory, middleware, router mounting
-- `tests/` — at backend root, separate from source (`test_auth.py`, `test_todos.py`)
+- `tests/` — at backend root, separate from source (`test_auth.py`, `test_todos.py`, `test_categories.py`)
 
 ### Format Patterns
 
@@ -301,7 +338,7 @@ pip install "fastapi[standard]" sqlmodel alembic psycopg2-binary pyjwt "passlib[
 - No response wrappers (no `{ data: ..., success: true }`)
 
 **Error Codes (machine-readable):**
-- `INVALID_CREDENTIALS`, `EMAIL_ALREADY_EXISTS`, `TODO_NOT_FOUND`, `VALIDATION_ERROR`, `UNAUTHORIZED`
+- `INVALID_CREDENTIALS`, `EMAIL_ALREADY_EXISTS`, `TODO_NOT_FOUND`, `CATEGORY_NOT_FOUND`, `DUPLICATE_CATEGORY_NAME`, `VALIDATION_ERROR`, `UNAUTHORIZED`
 
 **Data Exchange Formats:**
 - Dates: ISO 8601 strings in UTC — `"2026-04-14T10:30:00Z"`. Always UTC from API; frontend formats for display.
@@ -312,8 +349,9 @@ pip install "fastapi[standard]" sqlmodel alembic psycopg2-binary pyjwt "passlib[
 ### Communication Patterns
 
 **TanStack Query Keys:**
-- Array-based, hierarchical: `["todos"]`, `["todos", todoId]`, `["auth", "me"]`
-- Enables targeted invalidation: `queryClient.invalidateQueries({ queryKey: ["todos"] })` after any todo mutation
+- Array-based, hierarchical: `["todos"]`, `["todos", todoId]`, `["categories"]`, `["auth", "me"]`
+- Enables targeted invalidation: `queryClient.invalidateQueries({ queryKey: ["todos"] })` after any todo mutation; `queryClient.invalidateQueries({ queryKey: ["categories"] })` after any category mutation
+- Category deletion invalidates both `["categories"]` and `["todos"]` (since affected todos have their `category_id` set to null)
 
 **Optimistic Mutation Pattern (mandatory for all write operations):**
 ```
@@ -352,9 +390,12 @@ Every mutation follows this exact three-step pattern. No exceptions.
 - Follow the naming conventions table for their layer — snake_case in Python, camelCase in TypeScript, snake_case in API JSON
 - Use the `api.ts` utility for all HTTP calls — never call `fetch` directly from components
 - Use TanStack Query hooks for all server state — never store server data in React `useState` or context
-- Follow the three-step optimistic mutation pattern for all write operations
+- Follow the three-step optimistic mutation pattern for all write operations (todos and categories)
 - Place files in the prescribed directory structure — no ad-hoc folders
 - Return consistent `{ detail, code }` error format from all backend endpoints
+- Scope all todo and category queries by `user_id` from the authenticated user — never query without the user filter
+- Implement view filtering (All/This Week/By Deadline) client-side using TanStack Query selectors — never create dedicated API endpoints per view
+- Invalidate both `["categories"]` and `["todos"]` query keys when a category is deleted (cascade affects both)
 
 **Anti-Patterns (explicitly forbidden):**
 - Mixing camelCase and snake_case within the same layer
@@ -364,6 +405,9 @@ Every mutation follows this exact three-step pattern. No exceptions.
 - Adding test files in a location other than co-located (frontend) or `tests/` (backend)
 - Hardcoding URLs, secrets, or configuration values
 - Using `any` type in TypeScript — prefer explicit types or `unknown` with type guards
+- Creating separate API endpoints for each view (All, This Week, By Deadline) — views are client-side filters
+- Storing category collapse state or FAB last-used values in server state or TanStack Query — these are localStorage concerns
+- Allowing category creation with empty or duplicate names — validate on both frontend (blur) and backend (unique constraint)
 
 ## Project Structure & Boundaries
 
@@ -393,7 +437,7 @@ bmad_nf_todo_app/
 │   └── src/
 │       ├── main.tsx                    # React entry point, mounts App
 │       ├── app.tsx                     # Router setup, QueryClientProvider, AuthProvider
-│       ├── index.css                   # Tailwind directives + CSS custom properties (design tokens)
+│       ├── index.css                   # Tailwind directives + CSS custom properties (design tokens incl. priority & overdue colours)
 │       ├── vite-env.d.ts
 │       ├── components/
 │       │   ├── ui/                     # shadcn/ui primitives (installed via CLI)
@@ -403,35 +447,51 @@ bmad_nf_todo_app/
 │       │   │   ├── dialog.tsx
 │       │   │   ├── toast.tsx
 │       │   │   ├── toaster.tsx
-│       │   │   └── separator.tsx
-│       │   ├── todo-item.tsx           # Single todo: checkbox, text, delete action
+│       │   │   ├── separator.tsx
+│       │   │   ├── select.tsx          # Category & priority dropdowns
+│       │   │   ├── popover.tsx         # Inline edit popovers
+│       │   │   ├── date-picker.tsx     # Deadline date picker
+│       │   │   ├── sheet.tsx           # Category management panel (mobile)
+│       │   │   ├── badge.tsx           # Count badges, priority labels
+│       │   │   └── tabs.tsx            # View switcher segmented control
+│       │   ├── todo-item.tsx           # Single todo: checkbox, text, priority border, deadline label, category chip, delete action
 │       │   ├── todo-item.test.tsx
-│       │   ├── todo-list.tsx           # Active todos list container
+│       │   ├── todo-list.tsx           # Active todos list container (view-aware: sections in All, flat in Week, grouped in Deadline)
 │       │   ├── todo-list.test.tsx
 │       │   ├── completed-section.tsx   # Collapsible completed todos section
-│       │   ├── fab.tsx                 # Floating action button + expansion panel
+│       │   ├── view-switcher.tsx       # Segmented tab bar: All | This Week | By Deadline
+│       │   ├── view-switcher.test.tsx
+│       │   ├── category-section-header.tsx  # Collapsible section divider in "All" view
+│       │   ├── category-management-panel.tsx # Slide-in panel for category CRUD
+│       │   ├── category-management-panel.test.tsx
+│       │   ├── priority-indicator.tsx  # 3px left-border colour indicator, clickable for inline edit
+│       │   ├── deadline-label.tsx      # Smart-formatted deadline display, clickable for inline edit
+│       │   ├── deadline-group-header.tsx # Temporal section divider in "By Deadline" view
+│       │   ├── fab.tsx                 # Floating action button + expanded creation form (text + category/priority/deadline selectors)
 │       │   ├── fab.test.tsx
 │       │   ├── auth-screen.tsx         # Login/register form with frosted glass
 │       │   ├── auth-screen.test.tsx
-│       │   ├── empty-state.tsx         # Shown when no active todos
+│       │   ├── empty-state.tsx         # Shown when no active todos (view-aware: different message for This Week)
 │       │   ├── offline-indicator.tsx   # Top-strip network status bar
 │       │   ├── auth-guard.tsx          # Route wrapper: redirects to /login if unauthenticated
 │       │   └── theme-provider.tsx      # Light/dark mode context + system preference detection
 │       ├── hooks/
-│       │   ├── use-todos.ts            # TanStack Query hooks: useGetTodos, useCreateTodo, etc.
+│       │   ├── use-todos.ts            # TanStack Query hooks: useGetTodos, useCreateTodo, useUpdateTodo, useDeleteTodo + view filter selectors
 │       │   ├── use-todos.test.ts
+│       │   ├── use-categories.ts       # TanStack Query hooks: useGetCategories, useCreateCategory, useRenameCategory, useDeleteCategory
+│       │   ├── use-categories.test.ts
 │       │   ├── use-auth.ts            # Auth context hook: useAuth, useLogin, useRegister, useLogout
 │       │   └── use-auth.test.ts
 │       ├── lib/
 │       │   ├── api.ts                  # Fetch wrapper: credentials, snake↔camel transform, 401 intercept
 │       │   ├── api.test.ts
 │       │   ├── query-client.ts         # TanStack QueryClient configuration
-│       │   └── utils.ts               # cn() helper, date formatting, etc.
+│       │   └── utils.ts               # cn() helper, date formatting, deadline display logic, priority helpers
 │       ├── pages/
-│       │   ├── home.tsx               # Protected: todo list + FAB + completed section
+│       │   ├── home.tsx               # Protected: view switcher + todo list + FAB + completed section + category management
 │       │   └── login.tsx              # Public: auth screen (login/register toggle)
 │       └── types/
-│           └── index.ts               # Todo, User, CreateTodoRequest, ApiError types
+│           └── index.ts               # Todo, Category, User, CreateTodoRequest, CreateCategoryRequest, ApiError, ViewType types
 │
 ├── backend/
 │   ├── Dockerfile
@@ -443,7 +503,7 @@ bmad_nf_todo_app/
 │   │   └── versions/                  # Auto-generated migration files
 │   ├── app/
 │   │   ├── __init__.py
-│   │   ├── main.py                    # FastAPI app: CORS, cookie config, router mounting
+│   │   ├── main.py                    # FastAPI app: CORS, cookie config, router mounting (auth + todos + categories)
 │   │   ├── core/
 │   │   │   ├── __init__.py
 │   │   │   ├── config.py             # Pydantic BaseSettings: DATABASE_URL, JWT_SECRET, CORS_ORIGIN
@@ -452,16 +512,19 @@ bmad_nf_todo_app/
 │   │   ├── models/
 │   │   │   ├── __init__.py
 │   │   │   ├── user.py               # User SQLModel: id, email, hashed_password, created_at
-│   │   │   └── todo.py               # Todo SQLModel: id, user_id, description, is_completed, created_at
+│   │   │   ├── todo.py               # Todo SQLModel: id, user_id, description, is_completed, category_id (FK nullable), deadline (date nullable), priority (int 1-5 nullable), created_at
+│   │   │   └── category.py           # Category SQLModel: id, user_id, name, created_at; unique constraint on (user_id, name)
 │   │   └── routers/
 │   │       ├── __init__.py
 │   │       ├── auth.py               # POST /register, /login, /logout
-│   │       └── todos.py              # GET /, POST /, PATCH /{id}, DELETE /{id}
+│   │       ├── todos.py              # GET /, POST /, PATCH /{id}, DELETE /{id}
+│   │       └── categories.py         # GET /, POST /, PATCH /{id}, DELETE /{id}
 │   └── tests/
 │       ├── __init__.py
-│       ├── conftest.py               # Fixtures: test client, test DB session, authenticated user helper
+│       ├── conftest.py               # Fixtures: test client, test DB session, authenticated user helper, category factory
 │       ├── test_auth.py              # Registration, login, logout, 401 handling
-│       └── test_todos.py             # CRUD, per-user isolation, validation
+│       ├── test_todos.py             # CRUD, per-user isolation, validation, category/deadline/priority fields
+│       └── test_categories.py        # Category CRUD, per-user isolation, duplicate name rejection, cascade on delete
 │
 └── _bmad-output/                      # Planning artifacts (not deployed)
     └── planning-artifacts/
@@ -486,12 +549,14 @@ bmad_nf_todo_app/
 - `models/` define data shape only — no business logic in model classes
 - `core/security.py` owns all auth logic — JWT creation, verification, password hashing
 - `core/deps.py` owns dependency injection — database sessions and authenticated user extraction
+- `routers/categories.py` owns category CRUD including the cascade behavior on delete (setting `category_id = NULL` on affected todos)
 
 **Data Boundaries:**
 - SQLModel models are the single source of truth for database schema
 - Alembic migrations are the only mechanism for schema changes — no manual SQL
 - All database access goes through SQLModel sessions provided by `get_db` dependency
-- Per-user data isolation enforced in `get_current_user` dependency — queries always filter by `user_id`
+- Per-user data isolation enforced in `get_current_user` dependency — queries always filter by `user_id` for both todos and categories
+- Foreign key constraint: `todos.category_id` references `categories.id` with ON DELETE SET NULL — database enforces cascade integrity
 
 ### Requirements to Structure Mapping
 
@@ -507,8 +572,19 @@ bmad_nf_todo_app/
 - Backend: `app/routers/todos.py`, `app/models/todo.py`
 - Frontend: `hooks/use-todos.ts`, `components/todo-item.tsx`, `components/todo-list.tsx`, `components/completed-section.tsx`, `components/fab.tsx`
 
-**FR Category: UI & Experience (FR17-24)**
-- Frontend: `components/empty-state.tsx`, `components/offline-indicator.tsx`, `components/theme-provider.tsx`, `index.css` (design tokens), all component animation classes
+**FR Category: Category Management (FR31-37)**
+- Backend: `app/routers/categories.py`, `app/models/category.py`
+- Frontend: `hooks/use-categories.ts`, `components/category-management-panel.tsx`, `components/category-section-header.tsx`
+
+**FR Category: Deadline & Priority (FR38-42)**
+- Backend: `app/models/todo.py` (deadline, priority fields), `app/routers/todos.py` (accepts/returns fields)
+- Frontend: `components/priority-indicator.tsx`, `components/deadline-label.tsx`, `components/fab.tsx` (extended with selectors), `hooks/use-todos.ts` (mutations for metadata changes)
+
+**FR Category: Due This Week View (FR43-45)**
+- Frontend only (client-side filtering): `hooks/use-todos.ts` (filter/sort selector), `components/view-switcher.tsx`, `components/todo-list.tsx` (view-aware rendering), `components/empty-state.tsx` (view-specific message)
+
+**FR Category: UI & Experience (FR17-24, FR46-47)**
+- Frontend: `components/empty-state.tsx`, `components/offline-indicator.tsx`, `components/theme-provider.tsx`, `index.css` (design tokens incl. priority colours and overdue tokens), `components/priority-indicator.tsx` (FR46), `components/deadline-label.tsx` (FR46-47 overdue flagging), all component animation classes
 
 **FR Category: Developer Operations (FR25-30)**
 - Root: `docker-compose.yml`, `.env.example`, `README.md`
@@ -517,8 +593,10 @@ bmad_nf_todo_app/
 
 **Cross-Cutting Concerns:**
 - Authentication: `app/core/` (backend) ↔ `lib/api.ts` + `hooks/use-auth.ts` (frontend)
+- Per-user isolation: `app/core/deps.py` enforces on todos and categories
 - Error handling: `app/main.py` exception handlers (backend) ↔ `lib/api.ts` + TanStack Query `onError` (frontend)
-- Theming: `index.css` (tokens) ↔ `components/theme-provider.tsx` ↔ Tailwind config
+- Theming: `index.css` (tokens incl. priority + overdue colours) ↔ `components/theme-provider.tsx` ↔ Tailwind config
+- View filtering: `hooks/use-todos.ts` (client-side selectors) ↔ `components/view-switcher.tsx` ↔ URL search params
 
 ### Integration Points
 
@@ -532,6 +610,12 @@ bmad_nf_todo_app/
 User Action → Component → Hook (useMutation) → api.ts (fetch + transform) → FastAPI Router → SQLModel → PostgreSQL
                                                                                     ↓
 User sees result ← Component re-renders ← Hook (cache update) ← api.ts (response transform) ← JSON response
+
+View Filtering (client-side only):
+Cached todos (TanStack Query) → select/filter function → View-specific component rendering
+  - "All" view: group by category_id → CategorySectionHeader per group
+  - "This Week" view: filter deadline ≤ 7 days → sort by priority
+  - "By Deadline" view: group by temporal proximity → DeadlineGroupHeader per group
 ```
 
 ### Development Workflow Integration
@@ -574,14 +658,17 @@ All technology choices are compatible and well-tested together:
 **Functional Requirements Coverage:**
 - FR1-5 (User Account Management): Covered by `auth.py` router + `user.py` model + `auth-screen.tsx` + `use-auth.ts`
 - FR6-9 (Auth & Sessions): Covered by `security.py` (JWT) + `deps.py` (cookie extraction) + `api.ts` (401 handling) + `auth-guard.tsx`
-- FR10-16 (Todo Management): Covered by `todos.py` router + `todo.py` model + `use-todos.ts` + todo components
-- FR17-24 (UI/UX): Covered by TanStack Query optimistic updates + component state machines + design tokens + responsive Tailwind
+- FR10-16 (Todo Management): Covered by `todos.py` router + `todo.py` model (with category_id, deadline, priority fields) + `use-todos.ts` + todo components
+- FR17-24, FR46-47 (UI/UX): Covered by TanStack Query optimistic updates + component state machines + design tokens (incl. priority colours + overdue tokens) + responsive Tailwind + `priority-indicator.tsx` + `deadline-label.tsx` (overdue flagging)
 - FR25-30 (DevOps): Covered by Dockerfiles + docker-compose.yml + volume mounts + README
+- FR31-37 (Category Management): Covered by `categories.py` router + `category.py` model + `use-categories.ts` + `category-management-panel.tsx` + `category-section-header.tsx`
+- FR38-42 (Deadline & Priority): Covered by `todo.py` model fields + `todos.py` router (accepts/returns fields) + `priority-indicator.tsx` + `deadline-label.tsx` + extended `fab.tsx` (selectors)
+- FR43-45 (Due This Week View): Covered by client-side filtering in `use-todos.ts` + `view-switcher.tsx` + view-aware `todo-list.tsx`
 
 **Non-Functional Requirements Coverage:**
 - NFR1-4 (Performance): TanStack Query optimistic updates satisfy < 100ms UI response; Vite build optimization for < 3s load; FastAPI async for < 500ms API
-- NFR5-10 (Security): bcrypt via passlib (cost 10); JWT via PyJWT with expiry; per-user isolation via `get_current_user` dependency; CORS via FastAPI middleware; httpOnly cookies prevent XSS; Pydantic BaseSettings excludes secrets from logs
-- NFR11-13 (Reliability): PostgreSQL persistent volume; SQLModel sessions with proper cleanup; frontend error boundary + toast for graceful degradation
+- NFR5-10 (Security): bcrypt via passlib (cost 10); JWT via PyJWT with expiry; per-user isolation via `get_current_user` dependency (todos + categories); CORS via FastAPI middleware; httpOnly cookies prevent XSS; Pydantic BaseSettings excludes secrets from logs
+- NFR11-14 (Reliability): PostgreSQL persistent volume; SQLModel sessions with proper cleanup; frontend error boundary + toast for graceful degradation; "Due This Week" query is client-side filter on cached data — sub-millisecond (well under NFR14's 500ms target)
 
 ### Implementation Readiness Validation
 
@@ -604,6 +691,8 @@ Naming, structure, format, communication, and process patterns are all defined w
 - No database seed data strategy — can be handled in first implementation story
 - No rate limiting — acceptable at single-user scale; add if deployed publicly
 - Refresh token strategy deferred — 7-day access token covers v1 use case
+- No enforced max category count — practical UX limit ~10-15; add validation if needed
+- No recurring todos, drag-and-drop, or multi-dimension filter/sort — deferred to Phase 2 per PRD
 
 ### Architecture Completeness Checklist
 
@@ -642,8 +731,10 @@ Naming, structure, format, communication, and process patterns are all defined w
 **Key Strengths:**
 - Clean two-service separation aligns naturally with Docker requirements
 - SQLModel + FastAPI synergy eliminates model duplication between DB and API layers
-- TanStack Query's built-in optimistic update pattern directly satisfies the most complex UX requirement (FR17/FR18)
+- TanStack Query's built-in optimistic update pattern directly satisfies the most complex UX requirement (FR17/FR18) and extends naturally to category mutations
 - httpOnly cookie strategy is more secure than localStorage alternatives with minimal additional complexity
+- Client-side view filtering avoids API complexity while satisfying NFR14 (sub-millisecond filter on cached data)
+- The three-table schema (users, todos, categories) with ON DELETE SET NULL provides clean cascade behavior without orphan data
 - Every pattern choice follows the dominant convention of its ecosystem, reducing friction for any developer (human or AI) working in that layer
 
 **Areas for Future Enhancement:**
@@ -652,6 +743,8 @@ Naming, structure, format, communication, and process patterns are all defined w
 - Refresh token rotation — add if 7-day access token proves insufficient
 - Rate limiting and request throttling — add if deployed for public access
 - E2E testing with Playwright — natural addition for MCP-compatible testing
+- Category count limit — add server-side validation if UX becomes unwieldy
+- Multi-dimension filter/sort beyond built-in views — Phase 2 per PRD
 
 ### Implementation Handoff
 
@@ -666,4 +759,6 @@ Naming, structure, format, communication, and process patterns are all defined w
 1. Run `pnpm dlx shadcn@latest init -t vite` for frontend scaffold
 2. Create `backend/` with FastAPI project structure and `requirements.txt`
 3. Create `docker-compose.yml` with all three services and verify `docker-compose up` works with hot reload
-4. Set up Alembic and create initial User + Todo migrations
+4. Set up Alembic and create initial User + Todo + Category migrations (all three tables from the start)
+5. Implement auth endpoints, then todo CRUD (with category_id, deadline, priority fields), then category CRUD
+6. Frontend auth flow, then base todo management, then category management, then organizational features (priority/deadline/inline edit), then view architecture
