@@ -40,6 +40,8 @@
     --color-priority-3: var(--color-priority-3);
     --color-priority-4: var(--color-priority-4);
     --color-priority-5: var(--color-priority-5);
+    --color-overdue-text: var(--color-overdue-text);
+    --color-overdue-bg: var(--color-overdue-bg);
     --shadow-subtle: var(--shadow-subtle);
     --shadow-resting: var(--shadow-resting);
     --shadow-elevated: var(--shadow-elevated);
@@ -81,6 +83,10 @@
     --color-priority-3: #FFCC00;  /* Apple yellow -- medium */
     --color-priority-4: #0066FF;  /* accent blue -- low */
     --color-priority-5: #98989D;  /* muted gray -- minimal */
+
+    /* Overdue color tokens (UX-DR27) */
+    --color-overdue-text: #FF3B30;  /* red on deadline label */
+    --color-overdue-bg: #FF3B300D;  /* 5% opacity tint on todo item background */
 
     /* Border radius */
     --radius: 0.5rem;
@@ -150,6 +156,10 @@
     --color-priority-3: #FFD60A;
     --color-priority-4: #4D9FFF;
     --color-priority-5: #636366;
+
+    /* Overdue color tokens -- dark mode overrides (UX-DR27) */
+    --color-overdue-text: #FF453A;
+    --color-overdue-bg: #FF453A0D;
 
     /* Dark mode shadow overrides -- higher opacity for visibility on dark backgrounds */
     --shadow-subtle:   0 1px 2px rgba(0, 0, 0, 0.20);

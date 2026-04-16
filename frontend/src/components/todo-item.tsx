@@ -1,9 +1,10 @@
 import * as React from "react"
 
+import { DeadlineLabel } from "@/components/deadline-label"
 import { PriorityIndicator } from "@/components/priority-indicator"
 import { Button } from "@/components/ui/button"
 import { motionDuration } from "@/lib/motion"
-import { cn, getPriorityColor } from "@/lib/utils"
+import { cn, getPriorityColor, isOverdue } from "@/lib/utils"
 import type { Todo } from "@/types"
 
 /**
@@ -66,6 +67,8 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
   const wasConfirmingRef = React.useRef(false)
 
   const priorityColor = getPriorityColor(todo.priority)
+  // Overdue background only applies to active (non-completed) todos (AC #3, #5.5)
+  const overdueActive = !todo.isCompleted && isOverdue(todo.deadline)
 
   // Derive visual state from todo.isCompleted and deletion state
   const visualState: VisualState = isAnimatingDelete
@@ -167,7 +170,8 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
       data-state={visualState}
       style={{
         borderLeft: `3px solid ${priorityColor ?? "transparent"}`,
-        transition: "border-color 150ms ease-out",
+        backgroundColor: overdueActive ? "var(--color-overdue-bg)" : undefined,
+        transition: "border-color 150ms ease-out, background-color 150ms ease-out",
       }}
       className={cn(
         "group flex flex-col",
@@ -247,7 +251,7 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
         {/* Todo description — opacity and strikethrough animated via CSS transitions */}
         <span
           className={cn(
-            "text-sm leading-snug",
+            "flex-1 min-w-0 text-sm leading-snug",
             todo.isCompleted && "text-muted-foreground"
           )}
           style={{
@@ -264,6 +268,9 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
           {todo.description}
         </span>
 
+        {/* Deadline label — right-aligned, click-to-edit */}
+        <DeadlineLabel todo={todo} />
+
         {/* Delete button — revealed on hover/focus */}
         {onDelete && !isConfirmingDelete && !isAnimatingDelete && (
           <button
@@ -273,7 +280,7 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
             title="Delete todo"
             onClick={handleDeleteClick}
             className={cn(
-              "ml-auto flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center",
+              "flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center",
               "rounded-md text-muted-foreground hover:text-destructive transition-[opacity,color]",
               "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

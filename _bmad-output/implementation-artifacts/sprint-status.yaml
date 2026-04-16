@@ -36,6 +36,8 @@
 
 generated: 2026-04-14
 last_updated: '2026-04-16'
+
+
 project: bmad_nf_todo_app
 project_key: NOKEY
 tracking_system: file-system
@@ -89,8 +91,8 @@ development_status:
 
   # Epic 6: Priority & Deadline Management
   epic-6: in-progress
-  6-1-priority-system-tokens-indicator-and-inline-edit: review
-  6-2-deadline-system-label-overdue-treatment-and-inline-edit: backlog
+  6-1-priority-system-tokens-indicator-and-inline-edit: done
+  6-2-deadline-system-label-overdue-treatment-and-inline-edit: review
   epic-6-retrospective: optional
 
   # Epic 7: Multi-View Navigation
