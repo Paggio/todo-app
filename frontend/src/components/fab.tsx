@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useGetCategories } from "@/hooks/use-categories"
 import { useCreateTodo } from "@/hooks/use-todos"
-import { cn, PRIORITY_LEVELS } from "@/lib/utils"
+import { cn, PRIORITY_LEVELS, toISODate } from "@/lib/utils"
 
 /**
  * FAB visual state machine:
@@ -34,6 +34,8 @@ export function FAB({ isEmpty = false }: FABProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   // Session memory: last-used priority (React state, clears on page refresh per UX-DR29)
   const [selectedPriority, setSelectedPriority] = useState<number | null>(null)
+  // Session memory: last-used deadline (React state, clears on page refresh per UX-DR29)
+  const [selectedDeadline, setSelectedDeadline] = useState<string | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const fabButtonRef = useRef<HTMLButtonElement>(null)
@@ -116,6 +118,7 @@ export function FAB({ isEmpty = false }: FABProps) {
       description: trimmed,
       ...(validSelectedCategoryId !== null && { categoryId: validSelectedCategoryId }),
       ...(selectedPriority !== null && { priority: selectedPriority }),
+      ...(selectedDeadline !== null && { deadline: selectedDeadline }),
     })
     setDescription("")
     setValidationError(null)
@@ -273,6 +276,70 @@ export function FAB({ isEmpty = false }: FABProps) {
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:flex-1">
+                <label
+                  htmlFor="fab-deadline-input"
+                  className="text-caption text-muted-foreground shrink-0"
+                >
+                  Deadline:
+                </label>
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDeadline(toISODate(new Date()))}
+                      className="text-caption text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date()
+                        d.setDate(d.getDate() + 1)
+                        setSelectedDeadline(toISODate(d))
+                      }}
+                      className="text-caption text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                    >
+                      Tomorrow
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date()
+                        d.setDate(d.getDate() + 7)
+                        setSelectedDeadline(toISODate(d))
+                      }}
+                      className="text-caption text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                    >
+                      Next Week
+                    </button>
+                    {selectedDeadline !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDeadline(null)}
+                        className="text-caption text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    id="fab-deadline-input"
+                    type="date"
+                    value={selectedDeadline ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSelectedDeadline(val === "" ? null : val)
+                    }}
+                    className={cn(
+                      "h-8 w-full rounded-md border border-input bg-background px-2",
+                      "text-caption text-foreground",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    )}
+                  />
                 </div>
               </div>
             </div>
