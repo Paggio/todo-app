@@ -82,9 +82,9 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: Category Organization
-  epic-5: in-progress
+  epic-5: done
   5-1-category-and-todo-metadata-backend: done
-  5-2-category-management-frontend: review
+  5-2-category-management-frontend: done
   5-3-category-assignment-display-and-all-view-sections: done
   epic-5-retrospective: optional
 
