@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useGetCategories } from "@/hooks/use-categories"
 import { useCreateTodo } from "@/hooks/use-todos"
-import { cn } from "@/lib/utils"
+import { cn, PRIORITY_LEVELS } from "@/lib/utils"
 
 /**
  * FAB visual state machine:
@@ -32,6 +32,8 @@ export function FAB({ isEmpty = false }: FABProps) {
   const [validationError, setValidationError] = useState<string | null>(null)
   // Session memory: last-used categoryId (React state, clears on page refresh per UX-DR29)
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
+  // Session memory: last-used priority (React state, clears on page refresh per UX-DR29)
+  const [selectedPriority, setSelectedPriority] = useState<number | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const fabButtonRef = useRef<HTMLButtonElement>(null)
@@ -113,6 +115,7 @@ export function FAB({ isEmpty = false }: FABProps) {
     createTodo.mutate({
       description: trimmed,
       ...(validSelectedCategoryId !== null && { categoryId: validSelectedCategoryId }),
+      ...(selectedPriority !== null && { priority: selectedPriority }),
     })
     setDescription("")
     setValidationError(null)
@@ -203,37 +206,76 @@ export function FAB({ isEmpty = false }: FABProps) {
                 <Send className="size-4" />
               </Button>
             </div>
-            {/* Optional selectors row: category dropdown */}
-            {categories && categories.length > 0 && (
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
+            {/* Optional selectors row: category & priority dropdowns */}
+            <div className="flex flex-col gap-1.5 max-[399px]:flex-col sm:flex-row sm:gap-3">
+              {categories && categories.length > 0 && (
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:flex-1">
+                  <label
+                    htmlFor="fab-category-select"
+                    className="text-caption text-muted-foreground shrink-0"
+                  >
+                    Category:
+                  </label>
+                  <select
+                    id="fab-category-select"
+                    value={validSelectedCategoryId ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSelectedCategoryId(val === "" ? null : Number(val))
+                    }}
+                    className={cn(
+                      "h-8 w-full rounded-md border border-input bg-background px-2",
+                      "text-caption text-foreground",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    )}
+                  >
+                    <option value="">None</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:flex-1">
                 <label
-                  htmlFor="fab-category-select"
+                  htmlFor="fab-priority-select"
                   className="text-caption text-muted-foreground shrink-0"
                 >
-                  Category:
+                  Priority:
                 </label>
-                <select
-                  id="fab-category-select"
-                  value={validSelectedCategoryId ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    setSelectedCategoryId(val === "" ? null : Number(val))
-                  }}
-                  className={cn(
-                    "h-8 w-full rounded-md border border-input bg-background px-2",
-                    "text-caption text-foreground",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                <div className="flex items-center gap-1.5 w-full">
+                  {selectedPriority !== null && (
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: `var(--color-priority-${selectedPriority})` }}
+                      aria-hidden="true"
+                    />
                   )}
-                >
-                  <option value="">None</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    id="fab-priority-select"
+                    value={selectedPriority ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSelectedPriority(val === "" ? null : Number(val))
+                    }}
+                    className={cn(
+                      "h-8 w-full rounded-md border border-input bg-background px-2",
+                      "text-caption text-foreground",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    )}
+                  >
+                    <option value="">None</option>
+                    {PRIORITY_LEVELS.map((level) => (
+                      <option key={level.value} value={level.value}>
+                        {level.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            )}
+            </div>
             {validationError && (
               <p id="fab-validation-error" className="text-caption text-destructive">
                 {validationError}

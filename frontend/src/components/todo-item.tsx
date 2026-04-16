@@ -1,8 +1,9 @@
 import * as React from "react"
 
+import { PriorityIndicator } from "@/components/priority-indicator"
 import { Button } from "@/components/ui/button"
 import { motionDuration } from "@/lib/motion"
-import { cn } from "@/lib/utils"
+import { cn, getPriorityColor } from "@/lib/utils"
 import type { Todo } from "@/types"
 
 /**
@@ -162,6 +163,12 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
     <div
       role="listitem"
       data-state={visualState}
+      style={{
+        borderLeft: getPriorityColor(todo.priority)
+          ? `3px solid ${getPriorityColor(todo.priority)}`
+          : undefined,
+        transition: "border-color 150ms ease-out",
+      }}
       className={cn(
         "group flex flex-col",
         isAnimatingDelete && "animate-collapse-out"
@@ -230,6 +237,12 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
             </svg>
           </div>
         </button>
+
+        {/* Priority indicator — clickable dot to open inline priority picker */}
+        <PriorityIndicator
+          todoId={todo.id}
+          priority={todo.priority}
+        />
 
         {/* Todo description — opacity and strikethrough animated via CSS transitions */}
         <span
