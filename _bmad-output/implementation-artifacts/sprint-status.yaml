@@ -36,6 +36,7 @@
 
 generated: 2026-04-14
 last_updated: '2026-04-16'
+
 project: bmad_nf_todo_app
 project_key: NOKEY
 tracking_system: file-system
@@ -84,7 +85,7 @@ development_status:
   epic-5: in-progress
   5-1-category-and-todo-metadata-backend: done
   5-2-category-management-frontend: review
-  5-3-category-assignment-display-and-all-view-sections: backlog
+  5-3-category-assignment-display-and-all-view-sections: done
   epic-5-retrospective: optional
 
   # Epic 6: Priority & Deadline Management

@@ -2,6 +2,7 @@ import { Settings } from "lucide-react"
 import * as React from "react"
 
 import { CategoryManagementPanel } from "@/components/category-management-panel"
+import { CategorySectionHeader } from "@/components/category-section-header"
 import { Button } from "@/components/ui/button"
 import { CompletedSection } from "@/components/completed-section"
 import { EmptyState } from "@/components/empty-state"
@@ -9,6 +10,7 @@ import { FAB } from "@/components/fab"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TodoList } from "@/components/todo-list"
 import { useLogout } from "@/hooks/use-auth"
+import { useGetCategories } from "@/hooks/use-categories"
 import { useGetTodos } from "@/hooks/use-todos"
 
 /** Skeleton rows shown during the initial todo list fetch. */
@@ -37,10 +39,20 @@ export function HomePage() {
   const [categoryPanelOpen, setCategoryPanelOpen] = React.useState(false)
   const logout = useLogout()
   const { data: todos, isLoading, isError, isFetching, refetch } = useGetTodos()
+  const { data: categories } = useGetCategories()
 
   const activeTodos = todos?.filter((t) => !t.isCompleted) ?? []
   const completedTodos = todos?.filter((t) => t.isCompleted) ?? []
   const isEmpty = !isLoading && !isError && activeTodos.length === 0
+
+  // Group active todos by category for the All view
+  const uncategorizedTodos = activeTodos.filter((t) => t.categoryId === null)
+  const categorizedGroups = (categories ?? [])
+    .map((cat) => ({
+      category: cat,
+      todos: activeTodos.filter((t) => t.categoryId === cat.id),
+    }))
+    .filter((group) => group.todos.length > 0)
 
   // Accessibility: live region announcements for screen readers
   const [announcement, setAnnouncement] = React.useState("")
@@ -117,7 +129,30 @@ export function HomePage() {
           ) : todos ? (
             <>
               {activeTodos.length > 0 ? (
-                <TodoList todos={activeTodos} announce={announce} />
+                <div className="space-y-2">
+                  {/* Uncategorized section (appears first when there are uncategorized todos) */}
+                  {uncategorizedTodos.length > 0 && (
+                    <CategorySectionHeader
+                      categoryName="Uncategorized"
+                      categoryId="uncategorized"
+                      todoCount={uncategorizedTodos.length}
+                    >
+                      <TodoList todos={uncategorizedTodos} announce={announce} />
+                    </CategorySectionHeader>
+                  )}
+
+                  {/* Category sections (alphabetically by category name) */}
+                  {categorizedGroups.map((group) => (
+                    <CategorySectionHeader
+                      key={group.category.id}
+                      categoryName={group.category.name}
+                      categoryId={String(group.category.id)}
+                      todoCount={group.todos.length}
+                    >
+                      <TodoList todos={group.todos} announce={announce} />
+                    </CategorySectionHeader>
+                  ))}
+                </div>
               ) : (
                 <EmptyState />
               )}
