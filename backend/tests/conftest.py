@@ -23,6 +23,7 @@ from app.core.deps import get_db
 from app.main import app
 from app.models.user import User  # noqa: F401  -- ensures metadata is populated
 from app.models.todo import Todo  # noqa: F401  -- ensures metadata is populated (Story 3.1)
+from app.models.category import Category  # noqa: F401  -- ensures metadata is populated (Story 5.1)
 
 
 @pytest.fixture(name="engine")

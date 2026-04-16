@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.errors import install_exception_handlers
 from app.routers import auth as auth_router
+from app.routers import categories as categories_router
 from app.routers import todos as todos_router
 
 
@@ -20,6 +21,7 @@ app.add_middleware(
 install_exception_handlers(app)
 
 app.include_router(auth_router.router, prefix="/api/auth", tags=["auth"])
+app.include_router(categories_router.router, prefix="/api/categories", tags=["categories"])
 app.include_router(todos_router.router, prefix="/api/todos", tags=["todos"])
 
 

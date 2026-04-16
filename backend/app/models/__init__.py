@@ -13,5 +13,6 @@ SQLModel.metadata.naming_convention = {
 
 from app.models.user import User  # noqa: F401, E402  -- Story 2.1
 from app.models.todo import Todo  # noqa: F401, E402  -- Story 3.1
+from app.models.category import Category  # noqa: F401, E402  -- Story 5.1
 
 # These imports populate SQLModel.metadata so Alembic autogenerate detects them.

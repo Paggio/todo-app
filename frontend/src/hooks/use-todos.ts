@@ -41,6 +41,9 @@ export function useCreateTodo() {
         userId: 0,
         description: newTodo.description,
         isCompleted: false,
+        categoryId: newTodo.categoryId ?? null,
+        deadline: newTodo.deadline ?? null,
+        priority: newTodo.priority ?? null,
         createdAt: new Date().toISOString(),
       }
 
@@ -135,11 +138,18 @@ export function useUpdateTodo() {
       // (b) Snapshot current cache for rollback
       const previousTodos = queryClient.getQueryData<Todo[]>(["todos"])
 
-      // (c) Optimistically update the toggled todo in the cache
+      // (c) Optimistically update the todo in the cache
       queryClient.setQueryData<Todo[]>(["todos"], (old) =>
         (old ?? []).map((t) =>
           t.id === variables.id
-            ? { ...t, isCompleted: variables.isCompleted ?? t.isCompleted }
+            ? {
+                ...t,
+                ...(variables.isCompleted !== undefined && { isCompleted: variables.isCompleted }),
+                ...(variables.description !== undefined && { description: variables.description }),
+                ...(variables.categoryId !== undefined && { categoryId: variables.categoryId }),
+                ...(variables.deadline !== undefined && { deadline: variables.deadline }),
+                ...(variables.priority !== undefined && { priority: variables.priority }),
+              }
             : t
         )
       )

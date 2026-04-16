@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete]
+stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit]
 inputDocuments: ['_bmad-output/PRD.md']
 workflowType: 'prd'
 classification:
@@ -7,6 +7,10 @@ classification:
   domain: general
   complexity: low
   projectContext: greenfield
+lastEdited: '2026-04-16'
+editHistory:
+  - date: '2026-04-16'
+    changes: 'Added todo categories (user-created), deadline field, priority levels (1-5), due-this-week view sorted by priority. Moved from Phase 2 to MVP. Added Journey 5 (The Organizer). Added FR31-FR47, NFR14. Added PR-per-story workflow.'
 ---
 
 # Product Requirements Document - bmad_nf_todo_app
@@ -16,11 +20,11 @@ classification:
 
 ## Executive Summary
 
-A full-stack, single-user Todo web application built with deliberate craft — minimal in scope, precise in execution, and aesthetically intentional. The application solves the core personal task management need: capturing, tracking, and completing tasks with zero friction. Target user is a single individual (the builder/owner) who values a sharp, tech-forward interface over feature breadth. The v1 is a self-contained, complete product — not a prototype — with a backend that is architecturally extensible without over-engineering the present.
+A full-stack, single-user Todo web application built with deliberate craft — focused in scope, precise in execution, and aesthetically intentional. The application solves core personal task management needs: capturing, organizing, prioritizing, and completing tasks with zero friction. Users create custom categories (e.g. personal, work, errands) to section their todos, assign deadlines and priority levels (1–5), and get a focused "due this week" view sorted by priority. Target user is a single individual (the builder/owner) who values a sharp, tech-forward interface over feature breadth. The v1 is a self-contained, complete product — not a prototype — with a backend that is architecturally extensible without over-engineering the present.
 
 ### What Makes This Special
 
-Not differentiation by feature — differentiation by quality of execution. The aesthetic and technical sensibility is the product. Every element is considered: smooth interactions, instant feedback, clear visual hierarchy, and a UI that feels smart and crafted. The deliberate scoping (no collaboration, no priorities, no notifications in v1) is a design decision, not a limitation — resulting in an experience that feels complete and purposeful within its defined scope. Auth is included from day one, making this a fully deployable, production-ready application.
+Not differentiation by feature — differentiation by quality of execution. The aesthetic and technical sensibility is the product. Every element is considered: smooth interactions, instant feedback, clear visual hierarchy, and a UI that feels smart and crafted. The deliberate scoping (no collaboration, no notifications in v1) is a design decision, not a limitation — resulting in an experience that feels complete and purposeful within its defined scope. Auth is included from day one, categories and priorities from day one, making this a fully deployable, production-ready application that goes beyond basic CRUD.
 
 ## Project Classification
 
@@ -38,6 +42,9 @@ Not differentiation by feature — differentiation by quality of execution. The 
 - Completed tasks are visually distinct from active ones at a glance
 - Auth flow (register/login/logout) feels seamless and trustworthy — no confusion about state
 - App handles empty, loading, and error states without visual breakage on desktop and mobile
+- A user can create, rename, and delete custom categories and assign any todo to a category within 2 interactions
+- A user can set a deadline and a priority level (1–5) on any todo at creation or via edit
+- The "due this week" view surfaces all todos with deadlines in the next 7 days, sorted by priority (highest first), within 1 interaction from the main view
 
 ### Business Success
 
@@ -114,6 +121,19 @@ Not differentiation by feature — differentiation by quality of execution. The 
 
 ---
 
+### Journey 5 — The Organizer (Categories, Priorities & Deadlines)
+
+**Meet Sofia.** She's been using the app for a week and has accumulated 15+ todos. She needs structure.
+
+- **Opening:** Sofia opens the app and sees her flat todo list. She navigates to category management and creates three categories: "Work", "Personal", and "Side Project". Each gets a distinct visual identifier.
+- **Rising Action:** She assigns each existing todo to a category. New todos she creates now prompt for category, deadline, and priority (1–5). She sets a P1 deadline for tomorrow on a work deliverable, and a P3 deadline for the weekend on a personal errand.
+- **Climax:** She opens the "Due This Week" view. Her todos are filtered to only those due within 7 days, sorted highest priority first. The work deliverable due tomorrow sits at the top. She completes it — satisfying — and the list updates instantly.
+- **Resolution:** Over the following days she relies on the due-this-week view as her daily driver, only switching to the full list when she wants the big picture or needs to manage categories.
+
+**Reveals requirements:** category CRUD, category assignment per todo, deadline field, priority field (1–5), "due this week" filtered view sorted by priority, category-based visual grouping.
+
+---
+
 ### Journey Requirements Summary
 
 | Capability | Revealed By |
@@ -122,7 +142,7 @@ Not differentiation by feature — differentiation by quality of execution. The 
 | Protected routes / auth middleware | Journey 1, 3 |
 | JWT/session management + expiry handling | Journey 2, 3 |
 | Todo CRUD (per user) | Journey 1, 2 |
-| Optimistic / instant UI updates | Journey 1 |
+| Optimistic / instant UI updates | Journey 1, 5 |
 | Client-side validation + error states | Journey 2 |
 | Responsive layout (mobile + desktop) | Journey 2 |
 | Empty, loading, error UI states | Journey 1, 2, 3 |
@@ -130,6 +150,11 @@ Not differentiation by feature — differentiation by quality of execution. The 
 | `docker-compose up` single-command start | Journey 4 |
 | MCP-compatible UI (standard DOM) | Journey 4 |
 | README + setup documentation | Journey 4 |
+| Category CRUD (user-created) | Journey 5 |
+| Category assignment per todo | Journey 5 |
+| Deadline field per todo | Journey 5 |
+| Priority level (1–5) per todo | Journey 5 |
+| "Due this week" view sorted by priority | Journey 5 |
 
 ## Web Application Specific Requirements
 
@@ -170,9 +195,10 @@ Best-effort: semantic HTML, keyboard navigability for core flows, sufficient col
 
 ### Implementation Considerations
 
-- **Version control:** Full project managed via Git from day one
+- **Version control:** Full project managed via Git from day one, with a GitHub remote origin
 - **Commit discipline:** A clean, atomic commit is produced at the end of every completed task or story (depending on size) — no work-in-progress commits on main
 - **Commit messages:** Descriptive, scoped to the change (e.g. `feat: add todo creation endpoint`, `fix: redirect on 401`)
+- **PR workflow:** Each story is implemented on a feature branch, submitted as a pull request referencing the story and features, reviewed, and merged to main
 
 ## Project Scoping & Phased Development
 
@@ -183,16 +209,20 @@ Best-effort: semantic HTML, keyboard navigability for core flows, sufficient col
 
 ### MVP Feature Set (Phase 1)
 
-**Core User Journeys Supported:** Journey 1 (New User), Journey 2 (Returning User), Journey 3 (Edge Cases), Journey 4 (Developer Setup)
+**Core User Journeys Supported:** Journey 1 (New User), Journey 2 (Returning User), Journey 3 (Edge Cases), Journey 4 (Developer Setup), Journey 5 (The Organizer)
 
 **Must-Have Capabilities:**
 - User registration and login (email + password, bcrypt, JWT)
 - Protected routes — unauthenticated users redirected to login
 - Per-user todo isolation (users see only their own data)
-- Create todo (text input, inline submission)
-- View all todos (active and completed, clearly distinguished)
+- Create todo (text input, inline submission) with optional deadline, priority, and category
+- View all todos (active and completed, clearly distinguished), grouped or filtered by category
 - Complete todo (toggle)
 - Delete todo
+- User-created categories (create, rename, delete) with per-todo assignment
+- Priority levels 1–5 per todo (default: none or lowest)
+- Deadline (date) per todo (optional)
+- "Due this week" view: todos with deadlines within the next 7 days, sorted by priority (highest first)
 - Graceful 401 handling with redirect and session recovery
 - Empty state, loading state, and error state UI
 - Responsive layout (mobile + desktop, Chrome/Firefox/Safari)
@@ -206,9 +236,9 @@ Best-effort: semantic HTML, keyboard navigability for core flows, sufficient col
 
 **Phase 2 (Growth):**
 - Edit todo description
-- Task priorities or labels
-- Filter/sort todos (by status, date, priority)
-- Due dates
+- Filter/sort todos by multiple dimensions (status, date, priority, category) beyond the built-in views
+- Recurring todos
+- Drag-and-drop reordering within views
 
 **Phase 3 (Expansion):**
 - Shared todo lists / collaboration
@@ -240,7 +270,7 @@ Best-effort: semantic HTML, keyboard navigability for core flows, sufficient col
 
 ### Todo Management
 
-- **FR10:** An authenticated user can create a new todo by providing a text description
+- **FR10:** An authenticated user can create a new todo by providing a text description, and optionally a deadline, priority level, and category
 - **FR11:** An authenticated user can view all their todos — both active and completed
 - **FR12:** An authenticated user can mark a todo as complete
 - **FR13:** An authenticated user can mark a completed todo as active (undo completion)
@@ -248,16 +278,42 @@ Best-effort: semantic HTML, keyboard navigability for core flows, sufficient col
 - **FR15:** The system prevents creation of a todo with an empty description
 - **FR16:** Todo creation time is recorded and associated with each item
 
+### Category Management
+
+- **FR31:** An authenticated user can create a new category by providing a name
+- **FR32:** An authenticated user can rename an existing category
+- **FR33:** An authenticated user can delete a category; todos in that category revert to uncategorized
+- **FR34:** An authenticated user can assign a todo to exactly one category, or leave it uncategorized
+- **FR35:** An authenticated user can change or remove a todo's category assignment
+- **FR36:** Categories are per-user — no user can see or modify another user's categories
+- **FR37:** The system prevents creation of a category with an empty or duplicate name (per user)
+
+### Deadline & Priority
+
+- **FR38:** An authenticated user can set a deadline (date) on a todo at creation or afterward
+- **FR39:** An authenticated user can change or remove a todo's deadline
+- **FR40:** An authenticated user can set a priority level (1–5, where 1 is highest) on a todo at creation or afterward
+- **FR41:** An authenticated user can change or remove a todo's priority level
+- **FR42:** Deadline and priority are optional — todos without them remain valid
+
+### Due This Week View
+
+- **FR43:** The application provides a "Due This Week" view that displays all active (non-completed) todos with deadlines within the next 7 calendar days
+- **FR44:** Todos in the "Due This Week" view are sorted by priority (highest first); todos without a priority appear after prioritized items
+- **FR45:** The "Due This Week" view is accessible within 1 interaction from the main todo list
+
 ### User Interface & Experience
 
-- **FR17:** The UI reflects write operations (create, complete, delete) immediately, before server confirmation
+- **FR17:** The UI reflects write operations (create, complete, delete, category/priority/deadline changes) immediately, before server confirmation
 - **FR18:** If a write operation fails server-side, the UI rolls back to the previous state and notifies the user
 - **FR19:** Completed todos are visually distinguished from active todos at a glance
 - **FR20:** The application displays a purposeful empty state when the user has no todos
 - **FR21:** The application displays a loading state while data is being fetched
 - **FR22:** The application displays an error state when a data operation fails unrecoverably
-- **FR23:** The application layout is functional and polished on mobile and desktop viewports
+- **FR23:** The application layout is fully functional on viewports from 375px to 1920px with no horizontal scrolling, no overlapping elements, and all interactive targets at least 44x44px on mobile
 - **FR24:** Core flows are operable via keyboard navigation
+- **FR46:** Todos display their category, deadline, and priority visually when set
+- **FR47:** Todos with deadlines in the past (overdue) are visually flagged
 
 ### Developer Operations
 
@@ -273,9 +329,9 @@ Best-effort: semantic HTML, keyboard navigability for core flows, sufficient col
 ### Performance
 
 - **NFR1:** All UI write operations (create, complete, delete) must reflect optimistically in under 100ms from user action
-- **NFR2:** Initial page load (authenticated user landing on todo list) must complete within 3 seconds on a standard broadband connection
+- **NFR2:** Initial page load (authenticated user landing on todo list) must complete within 3 seconds on a 10 Mbps connection as measured by browser performance timing
 - **NFR3:** API responses for all CRUD operations must complete within 500ms under normal single-user load
-- **NFR4:** The application must remain responsive and not block the UI thread during any network operation
+- **NFR4:** The application must not block the UI main thread for more than 50ms during any network operation, as measurable via Long Tasks API
 
 ### Security
 
@@ -291,3 +347,4 @@ Best-effort: semantic HTML, keyboard navigability for core flows, sufficient col
 - **NFR11:** Todo data must persist across user sessions, browser restarts, and container restarts
 - **NFR12:** The database must use a persistent volume in the Docker setup — no data loss on `docker-compose down`
 - **NFR13:** The application must handle backend unavailability gracefully — the frontend must display an error state rather than crashing
+- **NFR14:** The "Due This Week" query must return results within 500ms under normal single-user load, including filtering and priority sorting

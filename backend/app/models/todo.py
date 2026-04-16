@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import sqlalchemy as sa
 from sqlmodel import Field, SQLModel
@@ -19,6 +19,14 @@ class Todo(SQLModel, table=True):
     user_id: int = Field(foreign_key="users.id", nullable=False, index=True)
     description: str = Field(max_length=500, nullable=False)
     is_completed: bool = Field(default=False, nullable=False)
+    category_id: int | None = Field(
+        default=None,
+        foreign_key="categories.id",
+        nullable=True,
+        index=True,
+    )
+    deadline: date | None = Field(default=None, nullable=True, index=True)
+    priority: int | None = Field(default=None, nullable=True, ge=1, le=5)
     created_at: datetime = Field(
         default_factory=_utcnow,
         nullable=False,
