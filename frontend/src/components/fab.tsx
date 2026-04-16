@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useGetCategories } from "@/hooks/use-categories"
 import { useCreateTodo } from "@/hooks/use-todos"
 import { cn } from "@/lib/utils"
 
@@ -29,12 +30,22 @@ export function FAB({ isEmpty = false }: FABProps) {
   const [fabState, setFabState] = useState<FabState>("idle")
   const [description, setDescription] = useState("")
   const [validationError, setValidationError] = useState<string | null>(null)
+  // Session memory: last-used categoryId (React state, clears on page refresh per UX-DR29)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const fabButtonRef = useRef<HTMLButtonElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const createTodo = useCreateTodo()
+  const { data: categories } = useGetCategories()
+
+  // Guard: reset selectedCategoryId if the referenced category was deleted
+  const validSelectedCategoryId =
+    selectedCategoryId !== null &&
+    categories?.some((c) => c.id === selectedCategoryId)
+      ? selectedCategoryId
+      : null
 
   // Track whether the FAB has been expanded at least once, so we don't
   // steal focus on initial mount when fabState starts as "idle".
@@ -99,7 +110,10 @@ export function FAB({ isEmpty = false }: FABProps) {
       setValidationError("Description cannot be empty")
       return
     }
-    createTodo.mutate({ description: trimmed })
+    createTodo.mutate({
+      description: trimmed,
+      ...(validSelectedCategoryId !== null && { categoryId: validSelectedCategoryId }),
+    })
     setDescription("")
     setValidationError(null)
     setFabState("collapsing")
@@ -189,6 +203,37 @@ export function FAB({ isEmpty = false }: FABProps) {
                 <Send className="size-4" />
               </Button>
             </div>
+            {/* Optional selectors row: category dropdown */}
+            {categories && categories.length > 0 && (
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
+                <label
+                  htmlFor="fab-category-select"
+                  className="text-caption text-muted-foreground shrink-0"
+                >
+                  Category:
+                </label>
+                <select
+                  id="fab-category-select"
+                  value={validSelectedCategoryId ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setSelectedCategoryId(val === "" ? null : Number(val))
+                  }}
+                  className={cn(
+                    "h-8 w-full rounded-md border border-input bg-background px-2",
+                    "text-caption text-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  )}
+                >
+                  <option value="">None</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {validationError && (
               <p id="fab-validation-error" className="text-caption text-destructive">
                 {validationError}
