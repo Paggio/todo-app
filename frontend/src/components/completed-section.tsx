@@ -9,6 +9,7 @@ const STORAGE_KEY = "completed-section-collapsed"
 
 type CompletedSectionProps = {
   todos: Todo[]
+  announce?: (message: string) => void
 }
 
 /**
@@ -17,7 +18,7 @@ type CompletedSectionProps = {
  * - Hidden entirely when there are no completed todos.
  * - Persists collapsed/expanded preference to localStorage.
  */
-export function CompletedSection({ todos }: CompletedSectionProps) {
+export function CompletedSection({ todos, announce }: CompletedSectionProps) {
   const updateTodo = useUpdateTodo()
   const deleteTodo = useDeleteTodo()
   const [collapsed, setCollapsed] = React.useState(() => {
@@ -46,21 +47,21 @@ export function CompletedSection({ todos }: CompletedSectionProps) {
 
   return (
     <section>
-      {/* Separator between active and completed sections */}
-      <div className="border-t border-border" />
+      {/* Separator between active and completed sections — 32px gap per UX spec */}
+      <div className="mt-8 border-t border-border" />
 
       {/* Section header — clickable to toggle collapse */}
       <button
         type="button"
         onClick={toggle}
         className={cn(
-          "flex w-full items-center gap-2 py-3 text-xs text-muted-foreground",
+          "flex w-full items-center gap-2 py-3 text-label text-muted-foreground",
           "cursor-pointer select-none hover:text-foreground transition-colors"
         )}
         aria-expanded={!collapsed}
         aria-controls="completed-todos-list"
       >
-        <span className="font-medium">Completed ({todos.length})</span>
+        <span>Completed ({todos.length})</span>
         <svg
           className={cn(
             "h-3.5 w-3.5 transition-transform",
@@ -77,24 +78,35 @@ export function CompletedSection({ todos }: CompletedSectionProps) {
         </svg>
       </button>
 
-      {/* Completed todo items */}
-      {!collapsed && (
-        <div id="completed-todos-list" role="list">
-          {todos.map((todo) => (
+      {/* Completed todo items — always rendered so aria-controls reference is valid */}
+      <div
+        id="completed-todos-list"
+        role="list"
+        hidden={collapsed}
+      >
+        {!collapsed &&
+          todos.map((todo) => (
             <TodoItem
               key={todo.id}
               todo={todo}
-              onToggle={() =>
+              onToggle={() => {
+                announce?.(
+                  todo.isCompleted
+                    ? `${todo.description} marked as active`
+                    : `${todo.description} marked as complete`
+                )
                 updateTodo.mutate({
                   id: todo.id,
                   isCompleted: !todo.isCompleted,
                 })
-              }
-              onDelete={() => deleteTodo.mutate({ id: todo.id })}
+              }}
+              onDelete={() => {
+                announce?.(`${todo.description} deleted`)
+                deleteTodo.mutate({ id: todo.id })
+              }}
             />
           ))}
-        </div>
-      )}
+      </div>
     </section>
   )
 }

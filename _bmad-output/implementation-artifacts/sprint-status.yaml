@@ -1,5 +1,5 @@
 # generated: 2026-04-14
-# last_updated: 2026-04-15
+# last_updated: "2026-04-15"
 # project: bmad_nf_todo_app
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,8 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-14
-last_updated: 2026-04-15T00:00:00
+last_updated: "2026-04-15"
 project: bmad_nf_todo_app
+
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
@@ -69,13 +70,13 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4: Design Polish, Responsiveness & Accessibility
-  epic-4: backlog
-  4-1-design-token-system-and-typography: backlog
-  4-2-light-dark-mode-theming: backlog
-  4-3-todo-completion-animation-sequence: backlog
-  4-4-fab-design-creation-and-deletion-animations: backlog
-  4-5-auth-screen-visual-design-and-page-transitions: backlog
-  4-6-component-polish-completedsection-emptystate-and-system-feedback: backlog
-  4-7-responsive-layout-button-hierarchy-and-form-patterns: backlog
-  4-8-keyboard-navigation-screen-reader-support-and-accessibility: backlog
+  epic-4: done
+  4-1-design-token-system-and-typography: done
+  4-2-light-dark-mode-theming: done
+  4-3-todo-completion-animation-sequence: done
+  4-4-fab-design-creation-and-deletion-animations: done
+  4-5-auth-screen-visual-design-and-page-transitions: done
+  4-6-component-polish-completedsection-emptystate-and-system-feedback: done
+  4-7-responsive-layout-button-hierarchy-and-form-patterns: done
+  4-8-keyboard-navigation-screen-reader-support-and-accessibility: done
   epic-4-retrospective: optional

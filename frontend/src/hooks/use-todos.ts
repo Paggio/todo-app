@@ -60,7 +60,7 @@ export function useCreateTodo() {
       if (context?.previousTodos) {
         queryClient.setQueryData(["todos"], context.previousTodos)
       }
-      toast.error("Failed to create todo. Please try again.")
+      toast.error("Failed to create todo. Please try again.", { duration: 4000 })
     },
 
     onSettled: () => {
@@ -104,7 +104,7 @@ export function useDeleteTodo() {
       if (context?.previousTodos) {
         queryClient.setQueryData(["todos"], context.previousTodos)
       }
-      toast.error("Failed to delete todo. Please try again.")
+      toast.error("Failed to delete todo. Please try again.", { duration: 4000 })
     },
 
     onSettled: () => {
@@ -154,7 +154,7 @@ export function useUpdateTodo() {
       if (context?.previousTodos) {
         queryClient.setQueryData(["todos"], context.previousTodos)
       }
-      toast.error("Failed to update todo. Please try again.")
+      toast.error("Failed to update todo. Please try again.", { duration: 4000 })
     },
 
     onSettled: () => {

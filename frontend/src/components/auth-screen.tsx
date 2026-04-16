@@ -5,8 +5,10 @@ import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useLogin, useRegister } from "@/hooks/use-auth"
 import { ApiClientError } from "@/lib/api"
+import { cn } from "@/lib/utils"
 
 type AuthMode = "sign-up" | "sign-in"
 
@@ -28,7 +30,11 @@ const signInSchema = z.object({
 
 type AuthFormValues = z.infer<typeof signUpSchema>
 
-export function AuthScreen() {
+interface AuthScreenProps {
+  isExiting?: boolean
+}
+
+export function AuthScreen({ isExiting }: AuthScreenProps) {
   const [mode, setMode] = React.useState<AuthMode>("sign-in")
   const register = useRegister()
   const login = useLogin()
@@ -58,68 +64,95 @@ export function AuthScreen() {
   const isSignUp = mode === "sign-up"
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6">
+    <div
+      className={cn(
+        "relative flex min-h-svh items-center justify-center p-6",
+        isExiting && "animate-auth-fade-out"
+      )}
+    >
+      {/* Decorative gradient shapes behind the frosted glass */}
+      <div className="fixed inset-0 overflow-hidden">
+        <div className="absolute -top-1/2 -right-1/4 h-[600px] w-[600px] rounded-full bg-primary/5" />
+        <div className="absolute -bottom-1/4 -left-1/4 h-[400px] w-[400px] rounded-full bg-primary/[0.03]" />
+      </div>
+
+      {/* Frosted glass backdrop */}
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-lg" />
+
+      {/* Theme toggle stays above the glass */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+
+      {/* Auth card floats above the glass */}
       <form
         role="form"
         aria-labelledby="auth-title"
         onSubmit={onSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm"
+        className="relative z-10 flex w-full max-w-sm flex-col gap-4 rounded-xl border border-border bg-card/90 p-6 shadow-elevated backdrop-blur-sm animate-auth-card-in"
       >
-        <h1 id="auth-title" className="text-lg font-semibold">
+        {/* App branding */}
+        <div className="text-center mb-2">
+          <span className="text-display">Todos</span>
+        </div>
+        <h1 id="auth-title" className="text-heading text-center">
           {isSignUp ? "Create your account" : "Welcome back"}
         </h1>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="auth-email" className="text-sm font-medium">
-            Email
-          </label>
-          <Input
-            id="auth-email"
-            type="email"
-            autoComplete="email"
-            aria-invalid={form.formState.errors.email ? "true" : "false"}
-            {...form.register("email")}
-          />
-          {form.formState.errors.email && (
-            <p className="text-xs text-destructive" role="alert">
-              {form.formState.errors.email.message}
+        {/* Animated form fields container — key={mode} triggers remount animation */}
+        <div key={mode} className="animate-auth-mode-switch flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="auth-email" className="text-sm font-medium">
+              Email
+            </label>
+            <Input
+              id="auth-email"
+              type="email"
+              autoComplete="email"
+              aria-invalid={form.formState.errors.email ? "true" : "false"}
+              {...form.register("email")}
+            />
+            {form.formState.errors.email && (
+              <p className="text-xs text-destructive" role="alert">
+                {form.formState.errors.email.message}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="auth-password" className="text-sm font-medium">
+              Password
+            </label>
+            <Input
+              id="auth-password"
+              type="password"
+              autoComplete={isSignUp ? "new-password" : "current-password"}
+              aria-invalid={form.formState.errors.password ? "true" : "false"}
+              {...form.register("password")}
+            />
+            {form.formState.errors.password && (
+              <p className="text-xs text-destructive" role="alert">
+                {form.formState.errors.password.message}
+              </p>
+            )}
+          </div>
+
+          <Button type="submit" disabled={login.isPending || register.isPending}>
+            {login.isPending
+              ? "Signing in..."
+              : register.isPending
+                ? "Creating account..."
+                : isSignUp
+                  ? "Sign up"
+                  : "Sign in"}
+          </Button>
+
+          {serverError && (
+            <p className="text-sm text-destructive" role="alert">
+              {serverError}
             </p>
           )}
         </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="auth-password" className="text-sm font-medium">
-            Password
-          </label>
-          <Input
-            id="auth-password"
-            type="password"
-            autoComplete={isSignUp ? "new-password" : "current-password"}
-            aria-invalid={form.formState.errors.password ? "true" : "false"}
-            {...form.register("password")}
-          />
-          {form.formState.errors.password && (
-            <p className="text-xs text-destructive" role="alert">
-              {form.formState.errors.password.message}
-            </p>
-          )}
-        </div>
-
-        <Button type="submit" disabled={login.isPending || register.isPending}>
-          {login.isPending
-            ? "Signing in..."
-            : register.isPending
-              ? "Creating account..."
-              : isSignUp
-                ? "Sign up"
-                : "Sign in"}
-        </Button>
-
-        {serverError && (
-          <p className="text-sm text-destructive" role="alert">
-            {serverError}
-          </p>
-        )}
 
         <button
           type="button"
@@ -127,9 +160,9 @@ export function AuthScreen() {
             setMode(isSignUp ? "sign-in" : "sign-up")
             login.reset()
             register.reset()
-            form.clearErrors()
+            form.reset()
           }}
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          className="min-h-[44px] text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
           {isSignUp
             ? "Already have an account? Sign in"

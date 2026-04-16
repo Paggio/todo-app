@@ -66,3 +66,9 @@ test-backend: ## Run pytest inside the backend container
 
 clean: ## Wipe containers, volumes, and locally-built images (DESTRUCTIVE)
 	docker compose down -v --rmi local
+
+clean-volumes: ## Wipe only data volumes (DESTRUCTIVE)
+	docker compose down -v
+
+clean-everything: ## Wipe ALL containers, volumes, and images (DANGEROUS)
+	docker system prune -a --volumes --force

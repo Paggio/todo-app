@@ -7,15 +7,26 @@ import { useCreateTodo } from "@/hooks/use-todos"
 import { cn } from "@/lib/utils"
 
 /**
+ * FAB visual state machine:
+ * idle -> expanding -> expanded -> collapsing -> idle
+ */
+type FabState = "idle" | "expanding" | "expanded" | "collapsing"
+
+type FABProps = {
+  isEmpty?: boolean
+}
+
+/**
  * Floating Action Button for todo creation.
  *
  * Idle state: circular FAB in bottom-right corner.
  * Expanded state: input panel for entering a todo description.
+ * Uses a state machine to orchestrate CSS entrance/exit animations.
  * Supports keyboard interaction (Enter to submit, Escape to close)
  * and click-outside to dismiss.
  */
-export function FAB() {
-  const [isExpanded, setIsExpanded] = useState(false)
+export function FAB({ isEmpty = false }: FABProps) {
+  const [fabState, setFabState] = useState<FabState>("idle")
   const [description, setDescription] = useState("")
   const [validationError, setValidationError] = useState<string | null>(null)
 
@@ -25,26 +36,41 @@ export function FAB() {
 
   const createTodo = useCreateTodo()
 
+  // Track whether the FAB has been expanded at least once, so we don't
+  // steal focus on initial mount when fabState starts as "idle".
+  const hasExpandedRef = useRef(false)
+
+  const isShowingPanel = fabState !== "idle"
+  const isShowingButton = fabState === "idle" || fabState === "collapsing"
+
   const closeFab = useCallback(() => {
-    setIsExpanded(false)
+    if (fabState === "idle" || fabState === "collapsing") return
+    setFabState("collapsing")
     setDescription("")
     setValidationError(null)
-    // Defer focus until after re-render so the idle button is back in the DOM
-    requestAnimationFrame(() => {
-      fabButtonRef.current?.focus()
-    })
-  }, [])
+  }, [fabState])
 
-  // Focus management: focus input when expanded
+  // Focus management: focus input when expansion animation completes
   useEffect(() => {
-    if (isExpanded) {
+    if (fabState === "expanded") {
       inputRef.current?.focus()
     }
-  }, [isExpanded])
+  }, [fabState])
+
+  // Focus management: focus FAB button when collapse animation completes
+  // (skip on initial mount when fabState starts as "idle")
+  useEffect(() => {
+    if (fabState === "idle" && hasExpandedRef.current) {
+      // Use rAF to ensure the button is rendered before focusing
+      requestAnimationFrame(() => {
+        fabButtonRef.current?.focus()
+      })
+    }
+  }, [fabState])
 
   // Click-outside handling
   useEffect(() => {
-    if (!isExpanded) return
+    if (!isShowingPanel) return
 
     function handleMouseDown(event: MouseEvent) {
       if (
@@ -57,7 +83,12 @@ export function FAB() {
 
     document.addEventListener("mousedown", handleMouseDown)
     return () => document.removeEventListener("mousedown", handleMouseDown)
-  }, [isExpanded, closeFab])
+  }, [isShowingPanel, closeFab])
+
+  function handleExpand() {
+    hasExpandedRef.current = true
+    setFabState("expanding")
+  }
 
   function handleSubmit() {
     // Double-submit guard: prevent firing duplicate mutations while one is in-flight
@@ -71,7 +102,7 @@ export function FAB() {
     createTodo.mutate({ description: trimmed })
     setDescription("")
     setValidationError(null)
-    setIsExpanded(false)
+    setFabState("collapsing")
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -83,61 +114,89 @@ export function FAB() {
     }
   }
 
-  // Expanded state: input panel
-  if (isExpanded) {
-    return (
-      <div
-        ref={containerRef}
-        className={cn(
-          "fixed bottom-6 right-6 left-6",
-          "sm:bottom-8 sm:left-auto sm:right-8 sm:w-[400px]",
-          "rounded-lg border border-border bg-background p-3 shadow-lg"
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <Input
-            ref={inputRef}
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value)
-              setValidationError(null)
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="What needs to be done?"
-            aria-label="Todo description"
-            aria-invalid={validationError ? true : undefined}
-            aria-describedby={validationError ? "fab-validation-error" : undefined}
-          />
-          <Button
-            size="icon"
-            onClick={handleSubmit}
-            aria-label="Submit todo"
-          >
-            <Send className="size-4" />
-          </Button>
-        </div>
-        {validationError && (
-          <p id="fab-validation-error" className="mt-1 text-xs text-destructive">
-            {validationError}
-          </p>
-        )}
-      </div>
-    )
+  function handlePanelAnimationEnd() {
+    if (fabState === "expanding") {
+      setFabState("expanded")
+    } else if (fabState === "collapsing") {
+      setFabState("idle")
+    }
   }
 
-  // Idle state: circular FAB using shadcn Button (spec Task 2.3)
   return (
-    <Button
-      ref={fabButtonRef}
-      size="icon"
-      onClick={() => setIsExpanded(true)}
-      className={cn(
-        "fixed bottom-6 right-6 sm:bottom-8 sm:right-8",
-        "h-14 w-14 rounded-full shadow-lg"
+    <>
+      {/* Idle state: circular FAB */}
+      {isShowingButton && (
+        <Button
+          ref={fabButtonRef}
+          size="icon"
+          onClick={handleExpand}
+          className={cn(
+            "fixed bottom-4 right-4 sm:bottom-6 sm:right-6",
+            "h-14 w-14 rounded-full shadow-elevated",
+            isEmpty && fabState === "idle" && "animate-fab-pulse"
+          )}
+          aria-label="Add todo"
+          title="Add todo"
+        >
+          <Plus className="size-6" />
+        </Button>
       )}
-      aria-label="Add todo"
-    >
-      <Plus className="size-6" />
-    </Button>
+
+      {/* Expanded state: input panel */}
+      {isShowingPanel && (
+        <div
+          ref={containerRef}
+          onAnimationEnd={handlePanelAnimationEnd}
+          className={cn(
+            "fixed bottom-4 right-4 left-4",
+            "sm:bottom-6 sm:left-auto sm:right-6 sm:w-[400px]",
+            "rounded-lg border border-border bg-background p-3 shadow-elevated",
+            fabState === "expanding" && "animate-fab-expand",
+            fabState === "collapsing" && "animate-fab-collapse"
+          )}
+        >
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="fab-input" className="text-label text-muted-foreground">
+              New todo
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="fab-input"
+                ref={inputRef}
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value)
+                  setValidationError(null)
+                }}
+                onKeyDown={handleKeyDown}
+                onBlur={() => {
+                  if (!description.trim()) {
+                    setValidationError("Description cannot be empty")
+                  }
+                }}
+                placeholder="What needs to be done?"
+                maxLength={500}
+                aria-invalid={validationError ? true : undefined}
+                aria-describedby={validationError ? "fab-validation-error" : undefined}
+              />
+              <Button
+                size="icon"
+                onClick={handleSubmit}
+                aria-label="Submit todo"
+                title="Submit todo"
+                className="min-h-[44px] min-w-[44px]"
+              >
+                <Send className="size-4" />
+              </Button>
+            </div>
+            {validationError && (
+              <p id="fab-validation-error" className="text-caption text-destructive">
+                {validationError}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

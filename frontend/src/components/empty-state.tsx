@@ -10,15 +10,15 @@ export function EmptyState() {
     <div
       role="status"
       aria-live="polite"
-      className="flex flex-col items-center justify-center py-16"
+      className="flex flex-col items-center justify-center py-16 animate-fade-in"
     >
-      <p className="text-xs text-muted-foreground">
-        No todos yet &mdash; tap + to get started
+      <p className="text-caption text-muted-foreground">
+        Nothing here yet &mdash; press + to get started
       </p>
 
       {/* Subtle arrow pointing toward the FAB (bottom-right) */}
       <svg
-        className="mt-3 h-5 w-5 text-muted-foreground/50"
+        className="mt-3 h-5 w-5 text-muted-foreground/50 transition-opacity duration-normal"
         viewBox="0 0 20 20"
         fill="none"
         stroke="currentColor"
