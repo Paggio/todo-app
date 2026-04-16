@@ -203,6 +203,24 @@
   to   { opacity: 1; }
 }
 
+/* Category panel animation keyframes (Story 5.2) */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes slide-out-right {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+@keyframes backdrop-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes backdrop-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
 /* Sonner toast theme overrides — adapts to light/dark via CSS variables */
 [data-sonner-toaster] [data-sonner-toast] {
   --normal-bg: var(--card);
@@ -301,6 +319,20 @@
   /* OfflineIndicator slide-down strip animation */
   .animate-slide-down-strip {
     animation: slide-down-strip var(--duration-normal) ease-out both;
+  }
+
+  /* Category panel animation utilities (Story 5.2) */
+  .animate-slide-in-right {
+    animation: slide-in-right var(--duration-slow) var(--ease-spring) both;
+  }
+  .animate-slide-out-right {
+    animation: slide-out-right var(--duration-fast) ease-in both;
+  }
+  .animate-backdrop-fade-in {
+    animation: backdrop-fade-in var(--duration-normal) ease-out both;
+  }
+  .animate-backdrop-fade-out {
+    animation: backdrop-fade-out var(--duration-fast) ease-in both;
   }
 }
 

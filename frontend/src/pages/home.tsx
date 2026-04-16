@@ -1,5 +1,7 @@
+import { Settings } from "lucide-react"
 import * as React from "react"
 
+import { CategoryManagementPanel } from "@/components/category-management-panel"
 import { Button } from "@/components/ui/button"
 import { CompletedSection } from "@/components/completed-section"
 import { EmptyState } from "@/components/empty-state"
@@ -32,6 +34,7 @@ function TodoSkeleton() {
  * active and completed sections. Replaces the placeholder from Epic 2.
  */
 export function HomePage() {
+  const [categoryPanelOpen, setCategoryPanelOpen] = React.useState(false)
   const logout = useLogout()
   const { data: todos, isLoading, isError, isFetching, refetch } = useGetTodos()
 
@@ -63,6 +66,16 @@ export function HomePage() {
           <h1 className="text-heading">Todos</h1>
           <div className="flex items-center gap-1">
             <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCategoryPanelOpen(true)}
+              aria-label="Manage categories"
+              title="Manage categories"
+              className="min-h-[44px] min-w-[44px]"
+            >
+              <Settings className="size-4" />
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -115,6 +128,11 @@ export function HomePage() {
       </div>
 
       <FAB isEmpty={isEmpty} />
+
+      <CategoryManagementPanel
+        open={categoryPanelOpen}
+        onClose={() => setCategoryPanelOpen(false)}
+      />
     </div>
   )
 }
