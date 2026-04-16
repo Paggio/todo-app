@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 
 import { PriorityPickerPopover } from "@/components/priority-picker-popover"
 import { cn, getPriorityLabel } from "@/lib/utils"
@@ -25,9 +25,17 @@ export function PriorityIndicator({
   priority,
 }: PriorityIndicatorProps) {
   const [isOpen, setIsOpen] = useState(false)
+  // Guard against click-outside race: mousedown closes the popover, then
+  // onClick on the trigger would re-open it in the same event cycle.
+  const closedByMouseDownRef = useRef(false)
 
   const handleClose = useCallback(() => {
+    closedByMouseDownRef.current = true
     setIsOpen(false)
+    // Reset the guard after the current event cycle
+    requestAnimationFrame(() => {
+      closedByMouseDownRef.current = false
+    })
   }, [])
 
   const label = priority
@@ -40,7 +48,10 @@ export function PriorityIndicator({
         type="button"
         aria-label={label}
         title={label}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => {
+          if (closedByMouseDownRef.current) return
+          setIsOpen((prev) => !prev)
+        }}
         className={cn(
           "flex h-6 w-6 items-center justify-center rounded-full",
           "cursor-pointer transition-opacity",

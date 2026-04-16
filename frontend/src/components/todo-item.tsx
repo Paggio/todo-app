@@ -65,6 +65,8 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
   const deleteButtonRef = React.useRef<HTMLButtonElement>(null)
   const wasConfirmingRef = React.useRef(false)
 
+  const priorityColor = getPriorityColor(todo.priority)
+
   // Derive visual state from todo.isCompleted and deletion state
   const visualState: VisualState = isAnimatingDelete
     ? "deleting"
@@ -164,9 +166,7 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
       role="listitem"
       data-state={visualState}
       style={{
-        borderLeft: getPriorityColor(todo.priority)
-          ? `3px solid ${getPriorityColor(todo.priority)}`
-          : undefined,
+        borderLeft: `3px solid ${priorityColor ?? "transparent"}`,
         transition: "border-color 150ms ease-out",
       }}
       className={cn(

@@ -207,7 +207,7 @@ export function FAB({ isEmpty = false }: FABProps) {
               </Button>
             </div>
             {/* Optional selectors row: category & priority dropdowns */}
-            <div className="flex flex-col gap-1.5 max-[399px]:flex-col sm:flex-row sm:gap-3">
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:gap-3">
               {categories && categories.length > 0 && (
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:flex-1">
                   <label
