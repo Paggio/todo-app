@@ -1,6 +1,6 @@
 # Story 7.2: By Deadline View
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -669,3 +669,14 @@ Claude Opus 4.7 (1M context)
 ## Change Log
 
 - 2026-04-17 — Story 7.2 implementation complete. Added temporal bucketing helper (`getDeadlineBucket`), client-side selector (`selectByDeadline`), two new components (`DeadlineGroupHeader`, `ByDeadlineView`), and wired the dedicated `view === "deadline"` branch into `HomePage`. Zero new runtime dependencies, zero backend changes. 22 new frontend tests (9 unit for `getDeadlineBucket`, 8 RTL for `DeadlineGroupHeader`, 5 RTL for `ByDeadlineView`). Playwright-verified all six temporal groups, Popover Overflow Pattern compliance, CompletedSection migration on completion, collapse persistence, mobile 375px viewport, and both light + dark mode. Epic 6 retro A6 closed per corrected interpretation.
+- 2026-04-17 — Code review complete. 0 patches, 1 defer, 4 dismissed. Approved. Lint / typecheck / test (60 passing) all green. Status flipped to `done`.
+
+## Review Findings
+
+- [x] [Review][Defer] No dedicated unit tests for `selectByDeadline` grouping + sort comparator [`frontend/src/hooks/use-todos.ts`] — deferred, pre-existing pattern from Story 7.1 (`selectDueThisWeek` is also only covered indirectly). Comparator is structurally identical to `selectDueThisWeek`; `getDeadlineBucket` is unit-tested; Playwright composition checks verify end-to-end ordering. Worth adding in Epic 7 retrospective action items.
+
+### Review Notes (approved, no patches needed)
+
+- Dev's flagged deviation on Task 5.3 (HomePage passes `deadlineGroups` directly to `ByDeadlineView` rather than conditioning on `.length > 0` at parent level) is spec-compliant under Task 4.4 — `ByDeadlineView` is explicitly required to render `<EmptyState />` internally when groups are empty. Wiring is simpler and behavior is identical. No change needed.
+- Pre-existing auth deep-link gotcha (query param dropped through `/login` redirect) confirmed out of scope — documented in Story 7.1 Debug Log and tracked in `deferred-work.md`.
+- All 15 ACs satisfied. Popover Overflow Pattern correctly applied on `DeadlineGroupHeader` expanded body (`overflow-visible`). Zero new runtime deps, zero backend changes, zero new API routes — architecture constraints honored.
