@@ -1,19 +1,14 @@
-<p align="center">
-  <img src="docs/screenshots/view-by-deadline.png" alt="By Deadline view with Overdue, Today, Tomorrow, This Week, Later, and No Deadline groups" width="720" />
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/view-all.png" alt="All view — category sections, priority indicators, deadlines, completed section" width="340" />
-  <img src="docs/screenshots/view-this-week.png" alt="Due This Week view — flat priority-sorted list with category chips" width="340" />
-</p>
+# TODO App
 
 <p align="center"><em>A minimal, crafted Todo web app — single-user, full-stack, containerized. <a href="docs/overview.md">Feature walkthrough →</a></em></p>
 
----
+<p align="center">
+  <img src="docs/screenshots/view-all-dark.png" alt="By Category view with sections for Work, Personal, and Errands" width="340" />
+</p>
 
-# bmad_nf_todo_app
-
-A minimal, crafted Todo web app — single-user, full-stack, containerized.
+<p align="center">
+  <img src="docs/screenshots/view-by-deadline.png" alt="By Deadline view with Overdue, Today, Tomorrow, This Week, Later, and No Deadline groups" width="340" />
+</p>
 
 ## Tech Stack
 
