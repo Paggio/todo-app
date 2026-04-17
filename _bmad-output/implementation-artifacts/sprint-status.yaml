@@ -98,5 +98,5 @@ development_status:
   # Epic 7: Multi-View Navigation
   epic-7: in-progress
   7-1-view-switcher-and-due-this-week-view: done
-  7-2-by-deadline-view: backlog
+  7-2-by-deadline-view: ready-for-dev
   epic-7-retrospective: optional
