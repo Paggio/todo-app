@@ -365,6 +365,28 @@
   }
 }
 
+/* ViewSwitcher responsive labels (Story 7.1, UX-DR21).
+ * At ≤ 400px the abbreviated "All" / "Week" / "Deadline" labels render;
+ * at ≥ 401px the full "All" / "This Week" / "By Deadline" labels render.
+ * Both spans live in the DOM — this media query flips which is visible.
+ * Implemented as a dedicated @media block rather than Tailwind's
+ * `max-[400px]:` arbitrary modifier because v4's JIT did not pick up the
+ * arbitrary max-width modifier reliably in this project setup. */
+.view-switcher-label-short {
+  display: none;
+}
+.view-switcher-label-long {
+  display: inline;
+}
+@media (max-width: 400px) {
+  .view-switcher-label-short {
+    display: inline;
+  }
+  .view-switcher-label-long {
+    display: none;
+  }
+}
+
 /* Reduced motion: disable all animations/transitions globally.
  * Uses 0.01ms (not 0) so animationend/transitionend events still fire —
  * critical for the FAB state machine which relies on onAnimationEnd. */

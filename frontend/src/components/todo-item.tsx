@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { CategoryChip } from "@/components/category-chip"
 import { DeadlineLabel } from "@/components/deadline-label"
 import { PriorityIndicator } from "@/components/priority-indicator"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,14 @@ type TodoItemProps = {
   todo: Todo
   onToggle?: () => void
   onDelete?: () => void
+  /**
+   * Optional category name to render as a chip between the description and
+   * the deadline label. Used by non-"All" views (e.g. `DueThisWeekView`,
+   * `ByDeadlineView`) that do NOT group by category via section headers.
+   * When omitted or `null`, no chip is rendered — the "All" view passes
+   * nothing here so its markup stays identical to Epic 5.
+   */
+  categoryName?: string | null
 }
 
 /**
@@ -52,7 +61,7 @@ type TodoItemProps = {
  *
  * Uses data-state attribute for CSS targeting: active | completing | completed | deleting
  */
-export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
+export function TodoItem({ todo, onToggle, onDelete, categoryName }: TodoItemProps) {
   const prevCompletedRef = React.useRef(todo.isCompleted)
   const [entranceAnimation, setEntranceAnimation] = React.useState<
     "slide-down" | "slide-up" | "fade-in" | null
@@ -267,6 +276,14 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
         >
           {todo.description}
         </span>
+
+        {/* Category chip — only rendered in non-"All" views that pass `categoryName`.
+            `shrink-0` prevents long descriptions from squeezing the chip. */}
+        {categoryName ? (
+          <span className="shrink-0">
+            <CategoryChip categoryName={categoryName} />
+          </span>
+        ) : null}
 
         {/* Deadline label — right-aligned, click-to-edit */}
         <DeadlineLabel todo={todo} />

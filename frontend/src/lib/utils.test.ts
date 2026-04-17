@@ -1,6 +1,70 @@
 import { describe, expect, it } from "vitest"
 
-import { formatDeadline, isOverdue, toISODate } from "./utils"
+import {
+  formatDeadline,
+  getPriorityColor,
+  getPriorityLabel,
+  isOverdue,
+  PRIORITY_LEVELS,
+  toISODate,
+} from "./utils"
+
+// ---------------------------------------------------------------------------
+// Priority helpers (Story 6.1 — tests added in 7.1 for retro action A2)
+// ---------------------------------------------------------------------------
+
+describe("getPriorityColor", () => {
+  it("returns the matching CSS custom property for priorities 1..5", () => {
+    for (let p = 1; p <= 5; p++) {
+      expect(getPriorityColor(p)).toBe(`var(--color-priority-${p})`)
+    }
+  })
+
+  it("returns undefined for null", () => {
+    expect(getPriorityColor(null)).toBeUndefined()
+  })
+
+  it("returns undefined for out-of-range values (0, 6, -1)", () => {
+    expect(getPriorityColor(0)).toBeUndefined()
+    expect(getPriorityColor(6)).toBeUndefined()
+    expect(getPriorityColor(-1)).toBeUndefined()
+  })
+})
+
+describe("getPriorityLabel", () => {
+  it("returns the label for priorities 1..5", () => {
+    expect(getPriorityLabel(1)).toBe("P1 Urgent")
+    expect(getPriorityLabel(5)).toBe("P5 Minimal")
+  })
+
+  it("returns undefined for null and out-of-range values", () => {
+    expect(getPriorityLabel(null)).toBeUndefined()
+    expect(getPriorityLabel(0)).toBeUndefined()
+    expect(getPriorityLabel(6)).toBeUndefined()
+  })
+})
+
+describe("PRIORITY_LEVELS", () => {
+  it("has exactly five entries", () => {
+    expect(PRIORITY_LEVELS).toHaveLength(5)
+  })
+
+  it("has values 1..5 in order with distinct non-empty labels", () => {
+    const values = PRIORITY_LEVELS.map((l) => l.value)
+    expect(values).toEqual([1, 2, 3, 4, 5])
+    const labels = PRIORITY_LEVELS.map((l) => l.label)
+    for (const label of labels) {
+      expect(label).toMatch(/.+/)
+    }
+    expect(new Set(labels).size).toBe(labels.length)
+  })
+
+  it("references the correct CSS custom property on each entry", () => {
+    for (const level of PRIORITY_LEVELS) {
+      expect(level.cssVar).toBe(`var(--color-priority-${level.value})`)
+    }
+  })
+})
 
 // ---------------------------------------------------------------------------
 // toISODate

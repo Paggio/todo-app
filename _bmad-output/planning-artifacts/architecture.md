@@ -409,6 +409,16 @@ Every mutation follows this exact three-step pattern. No exceptions.
 - Storing category collapse state or FAB last-used values in server state or TanStack Query — these are localStorage concerns
 - Allowing category creation with empty or duplicate names — validate on both frontend (blur) and backend (unique constraint)
 
+### Popover Overflow Pattern
+
+**Rule (post-Epic 6 release polish, commit `bfa0d62`):** Inline-edit popovers rendered inside a collapsible or otherwise overflow-clipping parent container must open **upward** (`bottom-full` anchor) and the parent's expanded/open state must set `overflow-visible`. Applying `overflow-hidden` to the popover's ancestor to "fix" a rendering issue is an anti-pattern — it clips the popover and makes keyboard-focus traversal feel broken.
+
+**Why this matters:** The `CategorySectionHeader` collapsible uses `overflow: hidden` during its expand/collapse animation to hide the outbound content. If a popover (priority picker, deadline picker, inline editor) is opened while that ancestor is mid-animation or permanently clipped, the popover chrome gets cut off at the section boundary. Opening the popover upward with `bottom-full` avoids the most common overflow scenario; ensuring the parent switches to `overflow-visible` once fully expanded fixes the general case.
+
+**Applies to:** any popover inside a `CategorySectionHeader`, `DeadlineGroupHeader` (Story 7.2 — next consumer of this pattern), or a future collapsible/drawer surface.
+
+**Reference:** commit `bfa0d62` — "fix: UI polish — category FAB button, panel spacing, popover overflow" — established the pattern after Epic 6 shipped. The Story 7.2 `DeadlineGroupHeader` will be the next component to apply it when rendering inline priority/deadline edit popovers inside deadline buckets.
+
 ## Project Structure & Boundaries
 
 ### Complete Project Directory Structure

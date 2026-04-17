@@ -1,17 +1,22 @@
-import { Plus } from "lucide-react"
 import * as React from "react"
 
 import { CategoryManagementPanel } from "@/components/category-management-panel"
 import { CategorySectionHeader } from "@/components/category-section-header"
 import { Button } from "@/components/ui/button"
 import { CompletedSection } from "@/components/completed-section"
+import { DueThisWeekView } from "@/components/due-this-week-view"
 import { EmptyState } from "@/components/empty-state"
 import { FAB } from "@/components/fab"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TodoList } from "@/components/todo-list"
+import { ViewSwitcher } from "@/components/view-switcher"
 import { useLogout } from "@/hooks/use-auth"
 import { useGetCategories } from "@/hooks/use-categories"
-import { useGetTodos } from "@/hooks/use-todos"
+import { selectDueThisWeek, useGetTodos } from "@/hooks/use-todos"
+import { useView } from "@/hooks/use-view"
+
+/** DOM id shared between `ViewSwitcher` (`aria-controls`) and the content region. */
+const VIEW_REGION_ID = "view-region"
 
 /** Skeleton rows shown during the initial todo list fetch. */
 function TodoSkeleton() {
@@ -40,12 +45,17 @@ export function HomePage() {
   const logout = useLogout()
   const { data: todos, isLoading, isError, isFetching, refetch } = useGetTodos()
   const { data: categories } = useGetCategories()
+  const { view } = useView()
 
   const activeTodos = todos?.filter((t) => !t.isCompleted) ?? []
   const completedTodos = todos?.filter((t) => t.isCompleted) ?? []
+  // "All view" emptiness — the FAB's empty-state hint is about the user
+  // having no todos at all, NOT whether the currently-selected view is empty
+  // (e.g. week view can be empty even when the user has plenty of future-dated
+  // or completed todos). See Task 6.5.
   const isEmpty = !isLoading && !isError && activeTodos.length === 0
 
-  // Group active todos by category for the All view
+  // Group active todos by category for the "all" view.
   const uncategorizedTodos = activeTodos.filter((t) => t.categoryId === null)
   const categorizedGroups = (categories ?? [])
     .map((cat) => ({
@@ -54,14 +64,21 @@ export function HomePage() {
     }))
     .filter((group) => group.todos.length > 0)
 
-  // Accessibility: live region announcements for screen readers
+  // "This Week" view — client-side selector over the same ["todos"] cache.
+  // Memoised on `todos` so sorting only re-runs when the cache changes.
+  const weekTodos = React.useMemo(
+    () => selectDueThisWeek(todos ?? []),
+    [todos]
+  )
+
+  // Accessibility: live region announcements for screen readers.
   const [announcement, setAnnouncement] = React.useState("")
 
   const announce = React.useCallback((message: string) => {
     setAnnouncement(message)
   }, [])
 
-  // Clear announcement after ~3s to avoid stale content
+  // Clear announcement after ~3s to avoid stale content.
   React.useEffect(() => {
     if (!announcement) return
     const timer = setTimeout(() => {
@@ -89,17 +106,24 @@ export function HomePage() {
           </div>
         </div>
 
+        {/* View switcher — below header, above the content region */}
+        <ViewSwitcher controlsId={VIEW_REGION_ID} />
+
         {/* Screen reader live region for action announcements */}
-        <div
-          aria-live="polite"
-          aria-atomic="true"
-          className="sr-only"
-        >
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
           {announcement}
         </div>
 
-        {/* Content */}
-        <div className="mt-6 space-y-8" aria-busy={isLoading}>
+        {/* Content region — keyed on `view` so switching remounts and replays
+            the `animate-fade-in` keyframe (150ms, honours prefers-reduced-motion
+            via the global media query in index.css). */}
+        <div
+          id={VIEW_REGION_ID}
+          role="tabpanel"
+          key={view}
+          className="mt-6 space-y-8 animate-fade-in"
+          aria-busy={isLoading}
+        >
           {isLoading ? (
             <TodoSkeleton />
           ) : isError ? (
@@ -117,37 +141,50 @@ export function HomePage() {
               </button>
             </div>
           ) : todos ? (
-            <>
-              {activeTodos.length > 0 ? (
-                <div className="space-y-2">
-                  {/* Uncategorized section (appears first when there are uncategorized todos) */}
-                  {uncategorizedTodos.length > 0 && (
-                    <CategorySectionHeader
-                      categoryName="Uncategorized"
-                      categoryId="uncategorized"
-                      todoCount={uncategorizedTodos.length}
-                    >
-                      <TodoList todos={uncategorizedTodos} announce={announce} />
-                    </CategorySectionHeader>
-                  )}
+            view === "week" ? (
+              <DueThisWeekView
+                todos={weekTodos}
+                categories={categories ?? []}
+                announce={announce}
+              />
+            ) : (
+              /* "all" view and "deadline" placeholder both render the
+                 existing category-section layout until Story 7.2 lands
+                 `<ByDeadlineView />`. The All-view markup below is
+                 byte-identical to the pre-7.1 implementation so Epic 5
+                 behavior is preserved verbatim. */
+              <>
+                {activeTodos.length > 0 ? (
+                  <div className="space-y-2">
+                    {/* Uncategorized section (appears first when there are uncategorized todos) */}
+                    {uncategorizedTodos.length > 0 && (
+                      <CategorySectionHeader
+                        categoryName="Uncategorized"
+                        categoryId="uncategorized"
+                        todoCount={uncategorizedTodos.length}
+                      >
+                        <TodoList todos={uncategorizedTodos} announce={announce} />
+                      </CategorySectionHeader>
+                    )}
 
-                  {/* Category sections (alphabetically by category name) */}
-                  {categorizedGroups.map((group) => (
-                    <CategorySectionHeader
-                      key={group.category.id}
-                      categoryName={group.category.name}
-                      categoryId={String(group.category.id)}
-                      todoCount={group.todos.length}
-                    >
-                      <TodoList todos={group.todos} announce={announce} />
-                    </CategorySectionHeader>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState />
-              )}
-              <CompletedSection todos={completedTodos} announce={announce} />
-            </>
+                    {/* Category sections (alphabetically by category name) */}
+                    {categorizedGroups.map((group) => (
+                      <CategorySectionHeader
+                        key={group.category.id}
+                        categoryName={group.category.name}
+                        categoryId={String(group.category.id)}
+                        todoCount={group.todos.length}
+                      >
+                        <TodoList todos={group.todos} announce={announce} />
+                      </CategorySectionHeader>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState />
+                )}
+                <CompletedSection todos={completedTodos} announce={announce} />
+              </>
+            )
           ) : null}
         </div>
       </div>
