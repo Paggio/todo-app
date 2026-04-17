@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react"
+import { Plus } from "lucide-react"
 import * as React from "react"
 
 import { CategoryManagementPanel } from "@/components/category-management-panel"
@@ -79,16 +79,6 @@ export function HomePage() {
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCategoryPanelOpen(true)}
-              aria-label="Manage categories"
-              title="Manage categories"
-              className="min-h-[44px] min-w-[44px]"
-            >
-              <Settings className="size-4" />
-            </Button>
-            <Button
               variant="outline"
               size="sm"
               disabled={logout.isPending}
@@ -162,7 +152,7 @@ export function HomePage() {
         </div>
       </div>
 
-      <FAB isEmpty={isEmpty} />
+      <FAB isEmpty={isEmpty} onOpenCategories={() => setCategoryPanelOpen(true)} />
 
       <CategoryManagementPanel
         open={categoryPanelOpen}

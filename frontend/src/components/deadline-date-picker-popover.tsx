@@ -98,7 +98,7 @@ export function DeadlineDatePickerPopover({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className={cn(
-        "absolute right-0 z-50 mt-1 w-56 rounded-md border border-border",
+        "absolute right-0 bottom-full z-50 mb-1 w-56 rounded-md border border-border",
         "bg-background shadow-elevated p-2",
         "focus-visible:outline-none animate-fade-in"
       )}

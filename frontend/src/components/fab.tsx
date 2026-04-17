@@ -15,6 +15,7 @@ type FabState = "idle" | "expanding" | "expanded" | "collapsing"
 
 type FABProps = {
   isEmpty?: boolean
+  onOpenCategories?: () => void
 }
 
 /**
@@ -26,7 +27,7 @@ type FABProps = {
  * Supports keyboard interaction (Enter to submit, Escape to close)
  * and click-outside to dismiss.
  */
-export function FAB({ isEmpty = false }: FABProps) {
+export function FAB({ isEmpty = false, onOpenCategories }: FABProps) {
   const [fabState, setFabState] = useState<FabState>("idle")
   const [description, setDescription] = useState("")
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -144,22 +145,41 @@ export function FAB({ isEmpty = false }: FABProps) {
 
   return (
     <>
-      {/* Idle state: circular FAB */}
+      {/* Idle state: FAB buttons for todo and category */}
       {isShowingButton && (
-        <Button
-          ref={fabButtonRef}
-          size="icon"
-          onClick={handleExpand}
-          className={cn(
-            "fixed bottom-4 right-4 sm:bottom-6 sm:right-6",
-            "h-14 w-14 rounded-full shadow-elevated",
-            isEmpty && fabState === "idle" && "animate-fab-pulse"
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 flex items-end gap-3">
+          {onOpenCategories && (
+            <div className="flex flex-col items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onOpenCategories}
+                className="h-11 w-11 rounded-full shadow-elevated border-primary/40 text-primary hover:bg-primary/10"
+                aria-label="Add category"
+                title="Add category"
+              >
+                <Plus className="size-5" />
+              </Button>
+              <span className="text-[10px] text-muted-foreground">Category</span>
+            </div>
           )}
-          aria-label="Add todo"
-          title="Add todo"
-        >
-          <Plus className="size-6" />
-        </Button>
+          <div className="flex flex-col items-center gap-1">
+            <Button
+              ref={fabButtonRef}
+              size="icon"
+              onClick={handleExpand}
+              className={cn(
+                "h-14 w-14 rounded-full shadow-elevated",
+                isEmpty && fabState === "idle" && "animate-fab-pulse"
+              )}
+              aria-label="Add todo"
+              title="Add todo"
+            >
+              <Plus className="size-6" />
+            </Button>
+            <span className="text-[10px] text-muted-foreground">Todo</span>
+          </div>
+        </div>
       )}
 
       {/* Expanded state: input panel */}
@@ -170,12 +190,12 @@ export function FAB({ isEmpty = false }: FABProps) {
           className={cn(
             "fixed bottom-4 right-4 left-4",
             "sm:bottom-6 sm:left-auto sm:right-6 sm:w-[400px]",
-            "rounded-lg border border-border bg-background p-3 shadow-elevated",
+            "rounded-lg border border-border bg-background p-4 shadow-elevated",
             fabState === "expanding" && "animate-fab-expand",
             fabState === "collapsing" && "animate-fab-collapse"
           )}
         >
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-3">
             <label htmlFor="fab-input" className="text-label text-muted-foreground">
               New todo
             </label>
@@ -209,15 +229,15 @@ export function FAB({ isEmpty = false }: FABProps) {
                 <Send className="size-4" />
               </Button>
             </div>
-            {/* Optional selectors row: category & priority dropdowns */}
-            <div className="flex flex-col gap-1.5 sm:flex-row sm:gap-3">
+            {/* Optional selectors: category, priority, deadline */}
+            <div className="flex flex-col gap-2.5">
               {categories && categories.length > 0 && (
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:flex-1">
+                <div className="flex items-center gap-2">
                   <label
                     htmlFor="fab-category-select"
-                    className="text-caption text-muted-foreground shrink-0"
+                    className="text-caption text-muted-foreground shrink-0 w-16"
                   >
-                    Category:
+                    Category
                   </label>
                   <select
                     id="fab-category-select"
@@ -241,14 +261,14 @@ export function FAB({ isEmpty = false }: FABProps) {
                   </select>
                 </div>
               )}
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:flex-1">
+              <div className="flex items-center gap-2">
                 <label
                   htmlFor="fab-priority-select"
-                  className="text-caption text-muted-foreground shrink-0"
+                  className="text-caption text-muted-foreground shrink-0 w-16"
                 >
-                  Priority:
+                  Priority
                 </label>
-                <div className="flex items-center gap-1.5 w-full">
+                <div className="flex items-center gap-1.5 flex-1">
                   {selectedPriority !== null && (
                     <span
                       className="inline-block h-2 w-2 shrink-0 rounded-full"
@@ -278,19 +298,19 @@ export function FAB({ isEmpty = false }: FABProps) {
                   </select>
                 </div>
               </div>
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:flex-1">
+              <div className="flex items-start gap-2">
                 <label
                   htmlFor="fab-deadline-input"
-                  className="text-caption text-muted-foreground shrink-0"
+                  className="text-caption text-muted-foreground shrink-0 w-16 mt-1"
                 >
-                  Deadline:
+                  Deadline
                 </label>
-                <div className="flex flex-col gap-1 w-full">
-                  <div className="flex items-center gap-1 flex-wrap">
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
                       onClick={() => setSelectedDeadline(toISODate(new Date()))}
-                      className="text-caption text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                      className="text-caption text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
                     >
                       Today
                     </button>
@@ -301,7 +321,7 @@ export function FAB({ isEmpty = false }: FABProps) {
                         d.setDate(d.getDate() + 1)
                         setSelectedDeadline(toISODate(d))
                       }}
-                      className="text-caption text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                      className="text-caption text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
                     >
                       Tomorrow
                     </button>
@@ -312,7 +332,7 @@ export function FAB({ isEmpty = false }: FABProps) {
                         d.setDate(d.getDate() + 7)
                         setSelectedDeadline(toISODate(d))
                       }}
-                      className="text-caption text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                      className="text-caption text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
                     >
                       Next Week
                     </button>
@@ -320,7 +340,7 @@ export function FAB({ isEmpty = false }: FABProps) {
                       <button
                         type="button"
                         onClick={() => setSelectedDeadline(null)}
-                        className="text-caption text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                        className="text-caption text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
                       >
                         Clear
                       </button>
