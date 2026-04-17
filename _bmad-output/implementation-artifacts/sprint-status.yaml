@@ -96,7 +96,7 @@ development_status:
   epic-6-retrospective: done
 
   # Epic 7: Multi-View Navigation
-  epic-7: backlog
-  7-1-view-switcher-and-due-this-week-view: backlog
+  epic-7: in-progress
+  7-1-view-switcher-and-due-this-week-view: ready-for-dev
   7-2-by-deadline-view: backlog
   epic-7-retrospective: optional
