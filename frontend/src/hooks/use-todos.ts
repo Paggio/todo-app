@@ -3,6 +3,7 @@ import { toast } from "sonner"
 
 import { apiFetch } from "@/lib/api"
 import { queryClient } from "@/lib/query-client"
+import { getDeadlineBucket, type DeadlineBucket } from "@/lib/utils"
 import type { CreateTodoRequest, Todo, UpdateTodoRequest } from "@/types"
 
 /**
@@ -86,6 +87,89 @@ export function selectDueThisWeek(todos: Todo[]): Todo[] {
       }
       return a.createdAt.localeCompare(b.createdAt)
     })
+}
+
+// ---------------------------------------------------------------------------
+// By Deadline selector (Story 7.2, UX-DR33)
+// ---------------------------------------------------------------------------
+
+/**
+ * A single grouped bucket returned by `selectByDeadline`. Each group carries
+ * its machine `bucket` identifier, the display `label`, and the sorted todos
+ * that fall into it. Empty buckets are dropped entirely — never include a
+ * `todos: []` placeholder.
+ */
+export type DeadlineGroup = {
+  bucket: DeadlineBucket
+  label: string
+  todos: Todo[]
+}
+
+/**
+ * Fixed bucket order for the "By Deadline" view: Overdue → Today → Tomorrow
+ * → This Week → Later → No Deadline. The label text is the user-facing copy;
+ * the bucket key is the machine value shared with `getDeadlineBucket` and
+ * `DeadlineGroupHeader`'s localStorage key.
+ */
+const DEADLINE_GROUPS: readonly { bucket: DeadlineBucket; label: string }[] = [
+  { bucket: "overdue", label: "Overdue" },
+  { bucket: "today", label: "Today" },
+  { bucket: "tomorrow", label: "Tomorrow" },
+  { bucket: "this-week", label: "This Week" },
+  { bucket: "later", label: "Later" },
+  { bucket: "no-deadline", label: "No Deadline" },
+] as const
+
+/**
+ * Client-side selector for the "By Deadline" view (Story 7.2, UX-DR33, FR46).
+ *
+ * Filter:
+ *   - `isCompleted === false` — completed todos render in `CompletedSection`
+ *   - Includes every deadline value (null → "no-deadline" bucket)
+ *
+ * Group:
+ *   - Classified via `getDeadlineBucket(todo.deadline)`; returned buckets
+ *     appear in the fixed order defined by `DEADLINE_GROUPS`
+ *   - Empty buckets are dropped entirely so the view renders only non-empty
+ *     groups
+ *
+ * Sort (within each bucket, stable):
+ *   1. `PRIORITY_SORT_KEY(priority)` ascending (P1..P5, null last)
+ *   2. `deadline` ascending (ISO "YYYY-MM-DD" lex = chronological). For the
+ *      "no-deadline" bucket every value is null, so this tier is a no-op
+ *      and sorting falls through to tier 3.
+ *   3. `createdAt` ascending (stable tie-break)
+ *
+ * Never mutates the input array — always `[...items].sort(...)`.
+ */
+export function selectByDeadline(todos: Todo[]): DeadlineGroup[] {
+  const byBucket = new Map<DeadlineBucket, Todo[]>()
+  for (const g of DEADLINE_GROUPS) byBucket.set(g.bucket, [])
+
+  for (const t of todos) {
+    if (t.isCompleted) continue
+    const bucket = getDeadlineBucket(t.deadline)
+    byBucket.get(bucket)!.push(t)
+  }
+
+  const cmp = (a: Todo, b: Todo) => {
+    const pa = PRIORITY_SORT_KEY(a.priority)
+    const pb = PRIORITY_SORT_KEY(b.priority)
+    if (pa !== pb) return pa - pb
+    // Deadline tier — for no-deadline both values are null → localeCompare
+    // on "" returns 0 and we fall through to createdAt. For other buckets
+    // the same ISO "YYYY-MM-DD" format sorts chronologically under lex.
+    const da = a.deadline ?? ""
+    const db = b.deadline ?? ""
+    if (da !== db) return da.localeCompare(db)
+    return a.createdAt.localeCompare(b.createdAt)
+  }
+
+  return DEADLINE_GROUPS.flatMap((g) => {
+    const items = byBucket.get(g.bucket)!
+    if (items.length === 0) return []
+    return [{ bucket: g.bucket, label: g.label, todos: [...items].sort(cmp) }]
+  })
 }
 
 /**

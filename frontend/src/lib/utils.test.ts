@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest"
 
 import {
   formatDeadline,
+  getDeadlineBucket,
   getPriorityColor,
   getPriorityLabel,
   isOverdue,
   PRIORITY_LEVELS,
   toISODate,
 } from "./utils"
+
+const DAY_MS = 1000 * 60 * 60 * 24
 
 // ---------------------------------------------------------------------------
 // Priority helpers (Story 6.1 — tests added in 7.1 for retro action A2)
@@ -164,5 +167,55 @@ describe("formatDeadline", () => {
     expect(result!.text).toContain("Overdue")
     expect(result!.text).toContain("\u00B7") // middle dot
     expect(result!.text).toContain("Apr 10")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// getDeadlineBucket (Story 7.2 — closes Epic 6 retro A6)
+// ---------------------------------------------------------------------------
+
+describe("getDeadlineBucket", () => {
+  /** Returns today + `n` days as an ISO "YYYY-MM-DD" string at local midnight. */
+  const offsetISO = (n: number): string => {
+    const base = new Date()
+    const today = new Date(base.getFullYear(), base.getMonth(), base.getDate())
+    return toISODate(new Date(today.getTime() + n * DAY_MS))
+  }
+
+  it('returns "no-deadline" for null', () => {
+    expect(getDeadlineBucket(null)).toBe("no-deadline")
+  })
+
+  it('returns "today" for today', () => {
+    expect(getDeadlineBucket(offsetISO(0))).toBe("today")
+  })
+
+  it('returns "tomorrow" for today + 1', () => {
+    expect(getDeadlineBucket(offsetISO(1))).toBe("tomorrow")
+  })
+
+  it('returns "this-week" for today + 2 (lower boundary)', () => {
+    expect(getDeadlineBucket(offsetISO(2))).toBe("this-week")
+  })
+
+  it('returns "this-week" for today + 6 (upper boundary)', () => {
+    expect(getDeadlineBucket(offsetISO(6))).toBe("this-week")
+  })
+
+  it('returns "later" for today + 7 (lower boundary)', () => {
+    expect(getDeadlineBucket(offsetISO(7))).toBe("later")
+  })
+
+  it('returns "later" for today + 30 (far future)', () => {
+    expect(getDeadlineBucket(offsetISO(30))).toBe("later")
+  })
+
+  it('returns "overdue" for today - 1', () => {
+    expect(getDeadlineBucket(offsetISO(-1))).toBe("overdue")
+  })
+
+  it('returns "overdue" for far-past dates', () => {
+    expect(getDeadlineBucket("2020-01-01")).toBe("overdue")
+    expect(getDeadlineBucket(offsetISO(-365))).toBe("overdue")
   })
 })

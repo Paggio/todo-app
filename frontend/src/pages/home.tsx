@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { ByDeadlineView } from "@/components/by-deadline-view"
 import { CategoryManagementPanel } from "@/components/category-management-panel"
 import { CategorySectionHeader } from "@/components/category-section-header"
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,11 @@ import { TodoList } from "@/components/todo-list"
 import { ViewSwitcher } from "@/components/view-switcher"
 import { useLogout } from "@/hooks/use-auth"
 import { useGetCategories } from "@/hooks/use-categories"
-import { selectDueThisWeek, useGetTodos } from "@/hooks/use-todos"
+import {
+  selectByDeadline,
+  selectDueThisWeek,
+  useGetTodos,
+} from "@/hooks/use-todos"
 import { useView } from "@/hooks/use-view"
 
 /** DOM id shared between `ViewSwitcher` (`aria-controls`) and the content region. */
@@ -68,6 +73,13 @@ export function HomePage() {
   // Memoised on `todos` so sorting only re-runs when the cache changes.
   const weekTodos = React.useMemo(
     () => selectDueThisWeek(todos ?? []),
+    [todos]
+  )
+
+  // "By Deadline" view — same cache, grouped by temporal bucket (Story 7.2).
+  // Zero network; pure lens over ["todos"].
+  const deadlineGroups = React.useMemo(
+    () => selectByDeadline(todos ?? []),
     [todos]
   )
 
@@ -147,12 +159,20 @@ export function HomePage() {
                 categories={categories ?? []}
                 announce={announce}
               />
+            ) : view === "deadline" ? (
+              /* "By Deadline" view — temporal group dividers with the
+                 CompletedSection rendered as a peer so both "All" and
+                 "By Deadline" share it (preserving collapse state). */
+              <>
+                <ByDeadlineView
+                  groups={deadlineGroups}
+                  categories={categories ?? []}
+                  announce={announce}
+                />
+                <CompletedSection todos={completedTodos} announce={announce} />
+              </>
             ) : (
-              /* "all" view and "deadline" placeholder both render the
-                 existing category-section layout until Story 7.2 lands
-                 `<ByDeadlineView />`. The All-view markup below is
-                 byte-identical to the pre-7.1 implementation so Epic 5
-                 behavior is preserved verbatim. */
+              /* "all" view — byte-identical to Epic 5 / 7.1 behavior. */
               <>
                 {activeTodos.length > 0 ? (
                   <div className="space-y-2">

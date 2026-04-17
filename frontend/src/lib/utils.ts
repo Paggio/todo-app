@@ -129,6 +129,47 @@ export function isOverdue(deadline: string | null): boolean {
 }
 
 /**
+ * Temporal bucket values used by the "By Deadline" view (Story 7.2, UX-DR33).
+ * - `"overdue"`: deadline < today
+ * - `"today"`: deadline === today
+ * - `"tomorrow"`: deadline === today + 1
+ * - `"this-week"`: today + 2 ≤ deadline ≤ today + 6
+ * - `"later"`: deadline ≥ today + 7
+ * - `"no-deadline"`: deadline is null
+ */
+export type DeadlineBucket =
+  | "overdue"
+  | "today"
+  | "tomorrow"
+  | "this-week"
+  | "later"
+  | "no-deadline"
+
+/**
+ * Classifies a todo's deadline into a temporal bucket for the By Deadline view.
+ *
+ * Shares its parse primitives (`parseDeadlineDate`, `getToday`, `daysDiff`)
+ * with `formatDeadline` — we deliberately do NOT route through
+ * `formatDeadline(deadline)?.text`. The display helper returns a localisable
+ * string, and parsing a bucket out of a display string couples machine
+ * classification to copy. Sharing the parse primitives is the correct reuse
+ * (Story 7.2 closes Epic 6 retro A6 with this interpretation).
+ *
+ * All comparisons happen at **local midnight** — never `new Date("YYYY-MM-DD")`,
+ * which creates UTC midnight and can shift the date back by one day in
+ * negative-offset timezones.
+ */
+export function getDeadlineBucket(deadline: string | null): DeadlineBucket {
+  if (deadline === null) return "no-deadline"
+  const diff = daysDiff(parseDeadlineDate(deadline), getToday())
+  if (diff < 0) return "overdue"
+  if (diff === 0) return "today"
+  if (diff === 1) return "tomorrow"
+  if (diff <= 6) return "this-week"
+  return "later"
+}
+
+/**
  * Converts a `Date` to an ISO date string "YYYY-MM-DD" for sending to the API.
  */
 export function toISODate(date: Date): string {
