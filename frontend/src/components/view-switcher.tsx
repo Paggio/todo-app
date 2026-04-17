@@ -88,7 +88,13 @@ export function ViewSwitcher({ controlsId }: ViewSwitcherProps) {
             aria-selected={isActive}
             aria-controls={controlsId}
             tabIndex={isActive ? 0 : -1}
-            onClick={() => setView(tab.value)}
+            onClick={() => {
+              // No-op when the clicked tab is already active — avoids
+              // pushing a redundant entry onto the history stack (which
+              // would make the browser back button land on the same view).
+              if (tab.value === view) return
+              setView(tab.value)
+            }}
             onKeyDown={(e) => handleKeyDown(e, index)}
             className={cn(
               "flex-1 rounded-full px-4 py-2 min-h-[44px]",

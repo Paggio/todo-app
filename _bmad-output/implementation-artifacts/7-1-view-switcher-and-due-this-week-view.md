@@ -1,6 +1,6 @@
 # Story 7.1: View Switcher & Due This Week View
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -473,3 +473,10 @@ Claude Opus 4.7 (1M context) via Claude Code `/bmad-dev-story` skill
 ## Change Log
 
 - **2026-04-17** — Story 7.1 implementation complete. Added `ViewSwitcher` + `useView` URL-backed hook, `selectDueThisWeek` client-side selector, `DueThisWeekView` flat-list presentation, and optional category chip on `TodoItem`. Wired into `HomePage` with keyed-remount fade transition (respects `prefers-reduced-motion`). Addressed Epic 6 retro debt A1–A5: first RTL component test in the codebase (12 tests on `ViewSwitcher`), priority helper unit tests, `login.tsx` `react-hooks/refs` fix, `login.test.tsx` type fixes, optimistic negative-ID DELETE guard on `useDeleteTodo`, Popover Overflow Pattern architecture note. Incidental pre-existing build/lint errors on the branch (unused `Plus` import, `vite.config.ts` vitest type mismatch) were also fixed so `pnpm lint` / `pnpm build` exit 0 at completion. Zero new runtime or test dependencies.
+- **2026-04-17** — Code review complete. Three review layers executed (Blind Hunter, Edge Case Hunter, Acceptance Auditor). All 11 ACs met. One small patch applied in-place: `ViewSwitcher` click handler now early-returns when the clicked tab is already active to avoid pushing a redundant history entry. Two items deferred (partial optimistic-create/delete race remaining after A4 guard; `selectDueThisWeek` "today" boundary doesn't advance past midnight without a cache change). Six findings dismissed as noise or explicitly waived by the spec. Lint and all 38 tests green post-patch.
+
+### Review Findings
+
+- [x] [Review][Patch] ViewSwitcher click on already-active tab pushed a redundant history entry [frontend/src/components/view-switcher.tsx:91] — applied during review
+- [x] [Review][Defer] `useDeleteTodo` A4 guard doesn't fully close the optimistic-create/delete race: if the user deletes a temp-ID todo before the POST round-trip resolves, the `onSettled` invalidation re-fetches and the server-created todo reappears [frontend/src/hooks/use-todos.ts:155] — deferred, partial fix is already a net improvement over the prior 404-error behavior
+- [x] [Review][Defer] `selectDueThisWeek` captures `new Date()` inside a `useMemo` keyed only on `todos`; the "today" boundary does not advance when the app is left open past midnight until the cache next changes [frontend/src/hooks/use-todos.ts:471, frontend/src/pages/home.tsx:67] — deferred, low severity (user reloads or any mutation re-runs the memo)
