@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-14
-last_updated: '2026-04-16'
+last_updated: '2026-04-17'
 
 
 project: bmad_nf_todo_app
@@ -93,7 +93,7 @@ development_status:
   epic-6: done
   6-1-priority-system-tokens-indicator-and-inline-edit: done
   6-2-deadline-system-label-overdue-treatment-and-inline-edit: done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   # Epic 7: Multi-View Navigation
   epic-7: backlog
