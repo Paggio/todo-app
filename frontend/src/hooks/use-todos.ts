@@ -18,6 +18,76 @@ export function useGetTodos() {
   })
 }
 
+// ---------------------------------------------------------------------------
+// View selectors (Story 7.1) — pure, memoisable, co-located with useGetTodos
+// ---------------------------------------------------------------------------
+
+const DAY_MS = 1000 * 60 * 60 * 24
+
+/**
+ * Parses a `YYYY-MM-DD` deadline into a Date at *local* midnight. We do NOT
+ * use `new Date("YYYY-MM-DD")` because that is parsed as UTC midnight and
+ * can shift the date back by one day in negative-offset timezones. This
+ * matches the parsing convention established by Story 6.2 (`isOverdue`,
+ * `formatDeadline` in `lib/utils.ts`).
+ */
+function parseDeadlineLocal(deadline: string): Date {
+  const [y, m, d] = deadline.split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/**
+ * Sort-key for a priority level. `null` priority sorts last (6) so that
+ * P1..P5 come first in ascending order.
+ */
+export function PRIORITY_SORT_KEY(priority: number | null): number {
+  return priority ?? 6
+}
+
+/**
+ * Client-side selector for the "This Week" view (Story 7.1, FR43 + FR44).
+ *
+ * Filter:
+ *   - `isCompleted === false`
+ *   - `deadline !== null`
+ *   - today ≤ deadline ≤ today + 6 days (at local midnight)
+ *   - Overdue (deadline < today) is NOT included — that belongs to the
+ *     By Deadline "Overdue" group in Story 7.2
+ *
+ * Sort (stable):
+ *   1. `priority ?? 6` ascending (P1..P5, null last)
+ *   2. `deadline` ascending (ISO "YYYY-MM-DD" sorts lexicographically,
+ *      which is also chronologically correct for same-format dates)
+ *   3. `createdAt` ascending (tie-break)
+ *
+ * Returns a new array — never mutates the input (TanStack Query cache must
+ * stay immutable for structural-sharing correctness).
+ */
+export function selectDueThisWeek(todos: Todo[]): Todo[] {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayMs = today.getTime()
+  const weekEndMs = todayMs + 6 * DAY_MS
+
+  return [...todos]
+    .filter((t) => {
+      if (t.isCompleted) return false
+      if (t.deadline === null) return false
+      const d = parseDeadlineLocal(t.deadline).getTime()
+      return d >= todayMs && d <= weekEndMs
+    })
+    .sort((a, b) => {
+      const pa = PRIORITY_SORT_KEY(a.priority)
+      const pb = PRIORITY_SORT_KEY(b.priority)
+      if (pa !== pb) return pa - pb
+      // Both deadlines are non-null after the filter above.
+      if (a.deadline !== b.deadline) {
+        return (a.deadline ?? "").localeCompare(b.deadline ?? "")
+      }
+      return a.createdAt.localeCompare(b.createdAt)
+    })
+}
+
 /**
  * Creates a new todo via `POST /api/todos` with the mandatory three-step
  * optimistic update pattern: onMutate (snapshot + optimistic write) →
@@ -82,8 +152,20 @@ export function useCreateTodo() {
  */
 export function useDeleteTodo() {
   return useMutation({
-    mutationFn: ({ id }: { id: number }) =>
-      apiFetch<void>(`/api/todos/${id}`, { method: "DELETE" }),
+    mutationFn: ({ id }: { id: number }) => {
+      // A4 (Epic 3 → 6 carried debt): optimistic todos use a negative
+      // timestamp ID until the server responds with the real id. If the
+      // user deletes the todo before the create round-trip resolves, do
+      // NOT fire `DELETE /api/todos/-1713...` — the server has never
+      // heard of it and would return 404. The optimistic cache removal
+      // and the `onSettled` invalidate keep the UI consistent; the real
+      // created todo (if it already landed) will still get cleaned up
+      // by the next invalidation cycle.
+      if (id < 0) {
+        return Promise.resolve()
+      }
+      return apiFetch<void>(`/api/todos/${id}`, { method: "DELETE" })
+    },
 
     onMutate: async (variables) => {
       // (a) Cancel outgoing refetches so they don't overwrite the optimistic update

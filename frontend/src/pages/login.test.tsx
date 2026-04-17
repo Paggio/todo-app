@@ -3,8 +3,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // --- Mocks ---
 
+type MockUser = { id: number; email: string; createdAt: string }
+type MockLocationState = { from?: { pathname?: string } } | null
+type MockAuthState = {
+  isAuthenticated: boolean
+  isLoading: boolean
+  user: MockUser | null
+  setUser: ReturnType<typeof vi.fn>
+}
+
 const mockNavigate = vi.fn()
-const mockLocation = { state: null, pathname: "/login", search: "", hash: "", key: "default" }
+const mockLocation: {
+  state: MockLocationState
+  pathname: string
+  search: string
+  hash: string
+  key: string
+} = { state: null, pathname: "/login", search: "", hash: "", key: "default" }
 
 vi.mock("react-router", () => ({
   useNavigate: () => mockNavigate,
@@ -22,7 +37,12 @@ vi.mock("@/components/auth-screen", () => ({
   ),
 }))
 
-let authState = { isAuthenticated: false, isLoading: true, user: null, setUser: vi.fn() }
+let authState: MockAuthState = {
+  isAuthenticated: false,
+  isLoading: true,
+  user: null,
+  setUser: vi.fn(),
+}
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => authState,
@@ -36,7 +56,12 @@ describe("LoginPage redirect", () => {
     vi.useFakeTimers()
     mockNavigate.mockClear()
     mockLocation.state = null
-    authState = { isAuthenticated: false, isLoading: true, user: null, setUser: vi.fn() }
+    authState = {
+      isAuthenticated: false,
+      isLoading: true,
+      user: null,
+      setUser: vi.fn(),
+    }
   })
 
   afterEach(() => {

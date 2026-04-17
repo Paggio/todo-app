@@ -73,3 +73,15 @@ export type CreateCategoryRequest = {
 export type RenameCategoryRequest = {
   name: string
 }
+
+// ---------------------------------------------------------------------------
+// View types (Story 7.1 — Multi-View Navigation)
+// ---------------------------------------------------------------------------
+
+/**
+ * One of the three user-facing views in the main app.
+ * - "all": existing category-section layout + Completed section (Epic 5 behavior)
+ * - "week": flat priority-sorted list of todos due today through today + 6 days
+ * - "deadline": grouped-by-deadline view (Story 7.2 — placeholder renders "all" until then)
+ */
+export type ViewType = "all" | "week" | "deadline"

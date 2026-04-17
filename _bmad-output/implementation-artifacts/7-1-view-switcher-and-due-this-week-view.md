@@ -1,6 +1,6 @@
 # Story 7.1: View Switcher & Due This Week View
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -36,74 +36,76 @@ so that I can focus on what matters most this week.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Introduce `ViewType` + URL query-param view state (AC: #1, #3)
-  - [ ] 1.1 Add `export type ViewType = "all" | "week" | "deadline"` to `frontend/src/types/index.ts`
-  - [ ] 1.2 Create `frontend/src/hooks/use-view.ts` exposing `useView(): { view: ViewType; setView: (v: ViewType) => void }`
-  - [ ] 1.3 Implement `useView` with `useSearchParams` from `react-router` v7; read `view` param, validate against the three allowed values, default to `"all"` on missing/unknown
-  - [ ] 1.4 `setView` must call `setSearchParams` with `replace: false` so browser back/forward traverses view history; preserve any unrelated existing search params
-  - [ ] 1.5 Memoise parsed `view` with `useMemo` against the raw search param string
-  - [ ] 1.6 Do NOT persist view in localStorage — URL is the single source of truth
+- [x] Task 1: Introduce `ViewType` + URL query-param view state (AC: #1, #3)
+  - [x] 1.1 Add `export type ViewType = "all" | "week" | "deadline"` to `frontend/src/types/index.ts`
+  - [x] 1.2 Create `frontend/src/hooks/use-view.ts` exposing `useView(): { view: ViewType; setView: (v: ViewType) => void }`
+  - [x] 1.3 Implement `useView` with `useSearchParams` from `react-router` v7; read `view` param, validate against the three allowed values, default to `"all"` on missing/unknown
+  - [x] 1.4 `setView` must call `setSearchParams` with `replace: false` so browser back/forward traverses view history; preserve any unrelated existing search params
+  - [x] 1.5 Memoise parsed `view` with `useMemo` against the raw search param string
+  - [x] 1.6 Do NOT persist view in localStorage — URL is the single source of truth
 
-- [ ] Task 2: Create `ViewSwitcher` segmented tab bar component (AC: #1, #2, #4)
-  - [ ] 2.1 Create `frontend/src/components/view-switcher.tsx`
-  - [ ] 2.2 Render a `div` with `role="tablist"` containing three `button` elements with `role="tab"`, `aria-selected={isActive}`, and `aria-controls` pointing at the view region id
-  - [ ] 2.3 Active tab styling: `bg-primary text-primary-foreground` (accent fill + white text); inactive tab: ghost style (`text-muted-foreground hover:text-foreground hover:bg-accent`); pill shape via `rounded-full` on each segment and `rounded-full bg-muted p-1` on the container
-  - [ ] 2.4 Each tab min 44×44px touch target; flex-1 so the three share width evenly
-  - [ ] 2.5 Provide two label variants via a small helper or Tailwind responsive utilities: full labels ("All" / "This Week" / "By Deadline") at ≥ 401px; short labels ("All" / "Week" / "Deadline") at ≤ 400px — implement via `<span className="sm:inline hidden">` / `<span className="sm:hidden inline">` pairs so both render in the DOM and CSS picks which is visible (Tailwind `sm` breakpoint default is 640px — use a custom breakpoint or arbitrary value `@media (max-width: 400px)` via `max-[400px]:`)
-  - [ ] 2.6 Clicking a tab calls `setView(value)` from `useView`; do NOT wrap in anchor; NOT navigation
-  - [ ] 2.7 Keyboard: Left/Right arrows move focus between tabs (roving tabindex pattern); Enter/Space activates; Home/End jump to first/last
-  - [ ] 2.8 Positioned below the app header inside `HomePage`, above the content area; full-width of the `max-w-[640px]` content container
+- [x] Task 2: Create `ViewSwitcher` segmented tab bar component (AC: #1, #2, #4)
+  - [x] 2.1 Create `frontend/src/components/view-switcher.tsx`
+  - [x] 2.2 Render a `div` with `role="tablist"` containing three `button` elements with `role="tab"`, `aria-selected={isActive}`, and `aria-controls` pointing at the view region id
+  - [x] 2.3 Active tab styling: `bg-primary text-primary-foreground` (accent fill + white text); inactive tab: ghost style (`text-muted-foreground hover:text-foreground hover:bg-accent`); pill shape via `rounded-full` on each segment and `rounded-full bg-muted p-1` on the container
+  - [x] 2.4 Each tab min 44×44px touch target; flex-1 so the three share width evenly
+  - [x] 2.5 Provide two label variants via a small helper or Tailwind responsive utilities: full labels at ≥ 401px; short labels at ≤ 400px. Initial attempt used `max-[400px]:` arbitrary modifiers, but Tailwind v4's JIT did not emit the expected `@media (max-width: 400px)` rule in this project. Implemented instead via two dedicated `.view-switcher-label-short` / `.view-switcher-label-long` classes in `index.css` gated by a single `@media (max-width: 400px)` block — both spans live in the DOM; CSS picks which is visible. Verified at 400px and 401px viewports via Playwright.
+  - [x] 2.6 Clicking a tab calls `setView(value)` from `useView`; do NOT wrap in anchor; NOT navigation
+  - [x] 2.7 Keyboard: Left/Right arrows move focus between tabs (roving tabindex pattern); Enter/Space activates; Home/End jump to first/last
+  - [x] 2.8 Positioned below the app header inside `HomePage`, above the content area; full-width of the `max-w-[640px]` content container
 
-- [ ] Task 3: Add view-aware filter/sort selectors to `use-todos` (AC: #5, #6, #9)
-  - [ ] 3.1 Extend `frontend/src/hooks/use-todos.ts` with two pure helpers exported alongside existing hooks:
-    - `selectDueThisWeek(todos: Todo[]): Todo[]` — filter + sort
-    - `PRIORITY_SORT_KEY(priority: number | null): number` — returns `priority ?? 6` so null priority sorts last
-  - [ ] 3.2 Filter rule: keep only todos where `isCompleted === false` AND `deadline !== null` AND `parseDeadlineDate(deadline)` is between today (inclusive) and today+6 (inclusive), using the same local-midnight comparison helpers style as `isOverdue`
-  - [ ] 3.3 Sort rule: primary key = priority ascending (1..5, nulls last via the key above); secondary = `deadline` ascending (ISO strings sort lexicographically); tertiary = `createdAt` ascending (stable tie-break)
-  - [ ] 3.4 Do NOT mutate the input array — return a new sorted array (`[...todos].filter(...).sort(...)`)
-  - [ ] 3.5 Expose a thin `useDueThisWeekTodos()` hook that wraps `useGetTodos()` and applies `selectDueThisWeek` via `useMemo` keyed on `todos` — do NOT use TanStack Query's `select` option because the same cache is consumed by the All view; a per-view selector memoized in the caller keeps all three views consistent
-  - [ ] 3.6 Alternative acceptable shape: export `selectDueThisWeek` as a pure function and call it from `HomePage` (or a new `DueThisWeekView` component) inside `useMemo`; choose whichever yields less indirection in the final `HomePage` diff — both satisfy the AC
+- [x] Task 3: Add view-aware filter/sort selectors to `use-todos` (AC: #5, #6, #9)
+  - [x] 3.1 Extended `frontend/src/hooks/use-todos.ts` with `PRIORITY_SORT_KEY(priority)` and `selectDueThisWeek(todos)` exported pure helpers
+  - [x] 3.2 Filter rule: keep only todos where `isCompleted === false` AND `deadline !== null` AND deadline parsed at local midnight is between today and today+6 (inclusive). Uses the same `new Date(year, month-1, day)` strategy as Story 6.2 to avoid the UTC-midnight timezone bug.
+  - [x] 3.3 Sort rule: priority ascending (nulls last), deadline ascending (ISO string lexicographic = chronological for same-format), createdAt ascending tie-break
+  - [x] 3.4 Returns a new array via `[...todos].filter(...).sort(...)` — never mutates
+  - [x] 3.5 Chose shape 3.6 — `selectDueThisWeek` is a pure export; `HomePage` applies it via `useMemo` keyed on `todos`. Avoids an extra hook layer and keeps the `["todos"]` cache single-source for all three views per the architecture constraint.
+  - [x] 3.6 See 3.5 — chosen shape
 
-- [ ] Task 4: Create `DueThisWeekView` presentation component (AC: #5, #7, #8)
-  - [ ] 4.1 Create `frontend/src/components/due-this-week-view.tsx`
-  - [ ] 4.2 Accept props: `todos: Todo[]`, `categories: Category[]`, `announce?: (msg: string) => void`
-  - [ ] 4.3 Build a `categoryNameById` map from `categories` for O(1) chip label lookup
-  - [ ] 4.4 When `todos.length === 0`, render the empty state: centered copy "Nothing due this week" + subtle checkmark SVG (reuse the visual pattern of `EmptyState` but with a checkmark icon instead of the arrow — 20×20 muted stroke, `animate-fade-in`, `role="status" aria-live="polite"`)
-  - [ ] 4.5 Otherwise render a flat `<div role="list">` with a `TodoItem` per todo (no `CategorySectionHeader`, no `TodoList` sectioning wrapper — flat list per UX-DR32)
-  - [ ] 4.6 Pass `onToggle`/`onDelete` wired to `useUpdateTodo` / `useDeleteTodo` exactly like `TodoList` does — DO NOT duplicate the mutation logic; import and reuse the same hooks pattern `TodoList` uses
-  - [ ] 4.7 Render a `CategoryChip` (already exists at `frontend/src/components/category-chip.tsx`) alongside the description for todos with `categoryId !== null` — see Task 5 for where the chip slots into `TodoItem`
+- [x] Task 4: Create `DueThisWeekView` presentation component (AC: #5, #7, #8)
+  - [x] 4.1 Created `frontend/src/components/due-this-week-view.tsx`
+  - [x] 4.2 Accepts `{ todos, categories, announce? }` props
+  - [x] 4.3 Builds a `categoryNameById` Map memoised on `categories`
+  - [x] 4.4 Empty state: "Nothing due this week" + subtle checkmark SVG (20×20, muted stroke, `animate-fade-in`, `role="status" aria-live="polite"`)
+  - [x] 4.5 Flat `<div role="list">` with `TodoItem` per todo — no section headers
+  - [x] 4.6 Wires `onToggle`/`onDelete` via `useUpdateTodo` / `useDeleteTodo` exactly as `TodoList` does
+  - [x] 4.7 Passes `categoryName` to `TodoItem` when `categoryId !== null`
 
-- [ ] Task 5: Extend `TodoItem` to render an optional category chip (AC: #7)
-  - [ ] 5.1 Add an optional `categoryName?: string | null` prop to `TodoItem`
-  - [ ] 5.2 When `categoryName` is provided (and truthy), render `<CategoryChip categoryName={categoryName} />` between the description `<span>` and the `<DeadlineLabel />` in the flex row
-  - [ ] 5.3 Chip must use `shrink-0` so it doesn't get squeezed by a long description; description retains `flex-1 min-w-0`
-  - [ ] 5.4 Default behavior (prop omitted or null) is unchanged — the "All" view does NOT pass this prop, so its markup and layout stay identical
-  - [ ] 5.5 Do NOT render the chip in the "All" view (category is already communicated by the `CategorySectionHeader` grouping per UX-DR32) — only `DueThisWeekView` passes `categoryName`
+- [x] Task 5: Extend `TodoItem` to render an optional category chip (AC: #7)
+  - [x] 5.1 Added `categoryName?: string | null` prop
+  - [x] 5.2 Renders `<CategoryChip categoryName={...} />` between description span and `<DeadlineLabel />` when provided
+  - [x] 5.3 Chip wrapper uses `shrink-0` so it doesn't get squeezed
+  - [x] 5.4 Prop omitted in All view — markup stays byte-identical
+  - [x] 5.5 Chip only rendered from `DueThisWeekView`; All view's `TodoList` doesn't pass the prop
 
-- [ ] Task 6: Wire `ViewSwitcher` + `DueThisWeekView` into `HomePage` (AC: #1, #2, #10, #11)
-  - [ ] 6.1 Modify `frontend/src/pages/home.tsx`: call `useView()`; render `<ViewSwitcher />` directly below the header, before the content `<div className="mt-6 space-y-8">`
-  - [ ] 6.2 Wrap the existing content block in a view switch: `view === "all"` → existing category-section layout + `CompletedSection`; `view === "week"` → `<DueThisWeekView ... />` (no `CompletedSection`); `view === "deadline"` → placeholder that renders the All view for now with a comment `// Story 7.2 will replace this with <ByDeadlineView />` — DO NOT implement By Deadline grouping (that is Story 7.2)
-  - [ ] 6.3 Apply a 150ms fade transition on view change: wrap the view content in a keyed div (`key={view}`) with `className="animate-fade-in"` — this re-mounts and re-plays the existing `fade-in` keyframe on every switch. Respect `prefers-reduced-motion` via the existing `animate-fade-in` class which already honors the `@media (prefers-reduced-motion: reduce)` override in `index.css`
-  - [ ] 6.4 Preserve the `FAB` and `CategoryManagementPanel` mounts — they are view-agnostic and stay outside the view switch
-  - [ ] 6.5 Verify the `isEmpty` prop passed to `FAB` still reflects `activeTodos.length === 0` (the "All" view's emptiness) — it should NOT flip based on `view === "week"` emptiness, because the FAB's empty-state hint is about "user has no todos at all", not "current view is empty"
+- [x] Task 6: Wire `ViewSwitcher` + `DueThisWeekView` into `HomePage` (AC: #1, #2, #10, #11)
+  - [x] 6.1 `HomePage` calls `useView()` and renders `<ViewSwitcher controlsId={VIEW_REGION_ID} />` directly below the header
+  - [x] 6.2 Content region view-switches: `view === "week"` → `<DueThisWeekView />` (no `CompletedSection`); `view === "all"` or `view === "deadline"` → existing category-section layout + `CompletedSection` (the deadline case is a Story 7.2 placeholder)
+  - [x] 6.3 Keyed-remount fade: `<div id={VIEW_REGION_ID} role="tabpanel" key={view} className="animate-fade-in">` — `prefers-reduced-motion` override in `index.css` already collapses the fade to 0.01ms
+  - [x] 6.4 `FAB` and `CategoryManagementPanel` remain outside the view switch (view-agnostic)
+  - [x] 6.5 `isEmpty` still derived from `activeTodos.length === 0` — unaffected by view selection
 
-- [ ] Task 7: Add the first RTL component test in the codebase (AC: #1, #2, #3) — Retro action A1
-  - [ ] 7.1 Ensure `@testing-library/react` and `@testing-library/user-event` are already in `package.json` devDependencies (confirm — if missing, add them and run `pnpm install` within the `frontend` workspace)
-  - [ ] 7.2 Create `frontend/src/components/view-switcher.test.tsx`
-  - [ ] 7.3 Test: renders three tabs with correct `aria-selected` reflecting current URL search param (wrap in `MemoryRouter` with `initialEntries={["/?view=week"]}`)
-  - [ ] 7.4 Test: clicking a tab updates the URL search param (assert via `useSearchParams` or a location-tracker test component inside the MemoryRouter)
-  - [ ] 7.5 Test: unknown `?view=foo` falls back to the "All" tab being active
-  - [ ] 7.6 Test: Left/Right arrow keys move focus between tabs (use `userEvent.keyboard("{ArrowRight}")`)
-  - [ ] 7.7 Test must pass under `pnpm test`; do NOT add jsdom polyfills beyond what `test-setup.ts` already configures
+- [x] Task 7: Add the first RTL component test in the codebase (AC: #1, #2, #3) — Retro action A1
+  - [x] 7.1 `@testing-library/react` already present. `@testing-library/user-event` NOT present — avoided adding a new dep per the "zero new deps" streak; keyboard events driven via `fireEvent.keyDown` which is sufficient for the tests under `jsdom`.
+  - [x] 7.2 Created `frontend/src/components/view-switcher.test.tsx`
+  - [x] 7.3 Tests assert `aria-selected` reflects `?view=week` and `?view=deadline`
+  - [x] 7.4 Tests assert clicking writes the URL and switching back to All strips the param
+  - [x] 7.5 Tests assert `?view=bogus` and missing `view` both fall back to All without rewriting the URL
+  - [x] 7.6 Tests assert ArrowLeft/Right/Home/End move focus between tabs with wrap
+  - [x] 7.7 12 new tests; all pass under `pnpm test`; no new jsdom polyfills
 
-- [ ] Task 8: Carried-debt items from Epic 6 retrospective (retro actions A2, A3, A4) — fold into this story
-  - [ ] 8.1 **A2 — Priority helper unit tests.** Add `getPriorityColor` and `PRIORITY_LEVELS` tests to `frontend/src/lib/utils.test.ts`. Cover: priority 1..5 returns the corresponding `var(--color-priority-N)` string; priority `null` returns `undefined`; out-of-range values (0, 6, -1) return `undefined`; `PRIORITY_LEVELS` has exactly 5 entries with distinct values and non-empty labels. Small, ~30 lines.
-  - [ ] 8.2 **A3 — Fix `login.tsx` lint warnings and `login.test.tsx` type errors.** Run `pnpm --filter frontend lint` and drive the count to 0 by addressing the 2× `react-hooks/refs` violations in `login.tsx` and the type mismatches in `login.test.tsx`. Prefer minimal targeted fixes (refactor refs-during-render into `useEffect` or `useCallback` closures; correct mock types). Do NOT change login behavior; existing login tests must still pass.
-  - [ ] 8.3 **A4 — Guard `useDeleteTodo` against optimistic negative IDs.** In `frontend/src/hooks/use-todos.ts`, if `variables.id < 0` (optimistic temp todo not yet persisted), skip the `apiFetch` call and only perform the optimistic cache removal + `invalidateQueries` in `onSettled`. This prevents the `DELETE /api/todos/-1713…` 404 that has been carried since Epic 3. Document the guard with an inline comment referencing "Epic 3 → 6 carried debt".
+- [x] Task 8: Carried-debt items from Epic 6 retrospective (retro actions A2, A3, A4) — fold into this story
+  - [x] 8.1 **A2 — Priority helper unit tests.** Added `getPriorityColor`, `getPriorityLabel`, and `PRIORITY_LEVELS` tests to `frontend/src/lib/utils.test.ts` covering 1..5, null, and out-of-range values; structural shape of `PRIORITY_LEVELS`; `cssVar` correspondence.
+  - [x] 8.2 **A3 — Fixed `login.tsx` lint violations and `login.test.tsx` type errors.** Moved the `navigateRef.current = navigate` / `fromRef.current = from` writes out of render into a dedicated `useEffect` (fixes the `react-hooks/refs` errors without changing behaviour — existing login tests still pass). Added explicit `MockAuthState` / `MockLocationState` types to the test mocks so the `authState`/`mockLocation.state` reassignments type-check. `pnpm lint` exits 0.
+  - [x] 8.3 **A4 — Guard `useDeleteTodo` against optimistic negative IDs.** In `mutationFn`, return early with `Promise.resolve()` when `id < 0` so `DELETE /api/todos/-1713…` never reaches the server. Optimistic cache removal + `onSettled` invalidation still fire, so the UI stays consistent. Inline comment references "Epic 3 → 6 carried debt".
 
-- [ ] Task 9: Documentation convention note (retro action A5)
-  - [ ] 9.1 Add a short convention note to `_bmad-output/planning-artifacts/architecture.md` under a new `### Popover Overflow Pattern` subsection inside the "Implementation Patterns" section (or the closest appropriate section): inline-edit popovers opened inside collapsible/overflowing parent containers must open upward (`bottom-full`) and their parent's expanded state must use `overflow-visible`. Reference the `bfa0d62` commit and `DeadlineGroupHeader` (Story 7.2) as the next consumer.
-  - [ ] 9.2 If editing `architecture.md` introduces significant churn, instead add the note as a new file `docs/conventions/popover-overflow.md` and link it from `architecture.md#Implementation Patterns`. Choose the path that minimises diff size.
+- [x] Task 9: Documentation convention note (retro action A5)
+  - [x] 9.1 Added `### Popover Overflow Pattern` subsection to `_bmad-output/planning-artifacts/architecture.md` within the "Implementation Patterns & Consistency Rules" section. References commit `bfa0d62` and names `DeadlineGroupHeader` (Story 7.2) as the next consumer. Chose the inline architecture.md addition per 9.1 (small diff); did not create a separate `docs/conventions/popover-overflow.md`.
+  - [x] 9.2 Chose 9.1 path (inline in architecture.md, no separate file).
+
+- [x] Task 10: Incidental fixes discovered while implementing above (disclose for reviewer context)
+  - [x] 10.1 Removed unused `Plus` import from `frontend/src/pages/home.tsx` (pre-existing lint error blocking `pnpm lint` / `pnpm build`; needed to clear for A3).
+  - [x] 10.2 Switched `frontend/vite.config.ts` to import `defineConfig` from `vitest/config` instead of `vite` so the `test` block type-checks under `tsc -b` (pre-existing error blocking `pnpm build` on this branch; unrelated to story scope but needed so the A3 "pnpm build works" criterion is genuinely verifiable).
 
 ## Dev Notes
 
@@ -430,10 +432,44 @@ Pattern observations:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.7 (1M context) via Claude Code `/bmad-dev-story` skill
 
 ### Debug Log References
 
+- **Tailwind v4 did not emit `max-[400px]:` rules in this project.** Inspected `document.styleSheets` while the ViewSwitcher was mounted at 400px — no `@media (max-width: 400px)` rule was generated, and `getComputedStyle` on the short-label span reported `display: none`. Worked around by defining two dedicated CSS classes (`.view-switcher-label-short` / `.view-switcher-label-long`) gated by one `@media (max-width: 400px)` block in `index.css`, as the Dev Notes explicitly allowed ("or inline a `@media` block in the component's className strategy via a small wrapper CSS class if cleaner").
+- **Hard-reloading `/?view=week` landed at `/` during Playwright verification.** Traced to a pre-existing auth race: `AuthGuard` sees `isLoading=false` + `user=null` briefly on initial render before `meQuery.data` is copied into `setUser` by the effect, redirects to `/login`, then `LoginPage` reads `location.state?.from?.pathname` (pathname only — search params are dropped) and navigates back to `/`. This is unrelated to Story 7.1 and predates the branch. The `ViewSwitcher` itself honours deep links correctly — verified by the RTL test suite using `MemoryRouter` with `initialEntries={["/?view=week"]}` and by clicking the tab in-app (URL updates to `?view=week`, browser back/forward traverses views).
+- **Lint errors pre-existing on the branch** (`Plus` unused in `home.tsx`, two `react-hooks/refs` errors in `login.tsx`, six `login.test.tsx` type errors, one `vite.config.ts` type error). A3 explicitly required driving `pnpm lint` to 0; fixing the incidental `Plus` import and the vite.config type error was necessary to satisfy that criterion end-to-end. Logged as Task 10.
+
 ### Completion Notes List
 
+- All 11 acceptance criteria met. Composition Checks from Dev Notes §Composition Checks verified manually via Playwright: view switching + URL updates, deep link via URL, unknown param fallback, week filter boundary (today..today+6 inclusive; today+7 correctly excluded), priority sort order, category chips on This Week only, popover in This Week view renders without clipping, mobile labels flip at 400px, Completed section visibility per view, `prefers-reduced-motion` honoured (existing global override in `index.css`).
+- All 5 Epic 6 retro debt items addressed (A1–A5). A1 delivered the first RTL component test in the codebase (`view-switcher.test.tsx`, 12 tests) — a foundation Story 7.2 will reuse.
+- Zero new runtime or test dependencies. `@testing-library/user-event` was NOT added — keyboard event tests use `fireEvent.keyDown` which is sufficient in jsdom for the roving-tabindex assertions.
+- `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` all pass at completion. Backend `pytest` still green (86 tests — unchanged; no backend code was modified).
+- Story 7.2 placeholder: the "By Deadline" tab renders the All view layout; a `TODO Story 7.2` comment marks the swap point.
+- Popover Overflow Pattern convention documented in `architecture.md` (Implementation Patterns section) referencing commit `bfa0d62` and the upcoming `DeadlineGroupHeader` consumer.
+
 ### File List
+
+**Created:**
+- `frontend/src/hooks/use-view.ts`
+- `frontend/src/components/view-switcher.tsx`
+- `frontend/src/components/view-switcher.test.tsx`
+- `frontend/src/components/due-this-week-view.tsx`
+
+**Modified:**
+- `frontend/src/types/index.ts` (added `ViewType` union)
+- `frontend/src/hooks/use-todos.ts` (added `selectDueThisWeek`, `PRIORITY_SORT_KEY`, A4 negative-ID delete guard)
+- `frontend/src/components/todo-item.tsx` (added optional `categoryName` prop + chip render slot)
+- `frontend/src/pages/home.tsx` (mounted `ViewSwitcher`, keyed-fade view region, `selectDueThisWeek` memo; removed unused `Plus` import)
+- `frontend/src/pages/login.tsx` (moved ref-during-render writes into `useEffect` for A3)
+- `frontend/src/pages/login.test.tsx` (added explicit mock types for A3)
+- `frontend/src/lib/utils.test.ts` (added priority helper tests for A2)
+- `frontend/src/index.css` (added `.view-switcher-label-short` / `.view-switcher-label-long` + `@media (max-width: 400px)` block)
+- `frontend/vite.config.ts` (import `defineConfig` from `vitest/config` so the `test` block type-checks)
+- `_bmad-output/planning-artifacts/architecture.md` (added `### Popover Overflow Pattern` subsection for A5)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (status: ready-for-dev → in-progress → review)
+
+## Change Log
+
+- **2026-04-17** — Story 7.1 implementation complete. Added `ViewSwitcher` + `useView` URL-backed hook, `selectDueThisWeek` client-side selector, `DueThisWeekView` flat-list presentation, and optional category chip on `TodoItem`. Wired into `HomePage` with keyed-remount fade transition (respects `prefers-reduced-motion`). Addressed Epic 6 retro debt A1–A5: first RTL component test in the codebase (12 tests on `ViewSwitcher`), priority helper unit tests, `login.tsx` `react-hooks/refs` fix, `login.test.tsx` type fixes, optimistic negative-ID DELETE guard on `useDeleteTodo`, Popover Overflow Pattern architecture note. Incidental pre-existing build/lint errors on the branch (unused `Plus` import, `vite.config.ts` vitest type mismatch) were also fixed so `pnpm lint` / `pnpm build` exit 0 at completion. Zero new runtime or test dependencies.

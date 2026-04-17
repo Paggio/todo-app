@@ -25,10 +25,16 @@ export function LoginPage() {
   const showedAuthScreen = React.useRef(false)
   const hasStartedExit = React.useRef(false)
   const exitTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
+  // Keep stable refs to the latest `navigate` / `from` so the exit-animation
+  // effect (which only depends on `isAuthenticated`) reads them without
+  // needing to be re-subscribed. React 19's `react-hooks/refs` rule
+  // disallows mutating `.current` during render — do it in an effect.
   const navigateRef = React.useRef(navigate)
   const fromRef = React.useRef(from)
-  navigateRef.current = navigate
-  fromRef.current = from
+  React.useEffect(() => {
+    navigateRef.current = navigate
+    fromRef.current = from
+  }, [navigate, from])
 
   React.useEffect(() => {
     if (!isLoading && !initialAuthResolved.current) {
