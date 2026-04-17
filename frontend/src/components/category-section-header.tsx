@@ -104,8 +104,8 @@ export function CategorySectionHeader({
       <div
         id={sectionId}
         className={cn(
-          "overflow-hidden transition-[max-height,opacity]",
-          collapsed ? "max-h-0 opacity-0" : "max-h-[9999px] opacity-100"
+          "transition-[max-height,opacity]",
+          collapsed ? "max-h-0 opacity-0 overflow-hidden" : "max-h-[9999px] opacity-100 overflow-visible"
         )}
         style={{ transitionDuration: "var(--duration-normal)" }}
         hidden={collapsed}

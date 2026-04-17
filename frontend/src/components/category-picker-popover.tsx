@@ -101,7 +101,7 @@ export function CategoryPickerPopover({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className={cn(
-        "absolute z-50 mt-1 w-48 rounded-md border border-border",
+        "absolute bottom-full left-0 z-50 mb-1 w-48 rounded-md border border-border",
         "bg-background shadow-elevated py-1",
         "focus-visible:outline-none animate-fade-in"
       )}
