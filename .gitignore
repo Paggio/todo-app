@@ -31,3 +31,8 @@ frontend/.pnpm-store/
 test-results/
 playwright-report/
 /frontend/.playwright/
+
+# Coverage output
+# (backend/.coverage and backend/htmlcov/ are already covered by backend/.gitignore)
+frontend/coverage/
+backend/coverage.xml
