@@ -24,3 +24,8 @@ frontend/dist-ssr/
 frontend/*.local
 frontend/.pnpm-debug.log*
 frontend/.pnpm-store/
+
+# Playwright E2E artifacts
+test-results/
+playwright-report/
+/frontend/.playwright/
