@@ -6,11 +6,12 @@ POSTGRES_DB   := $(if $(POSTGRES_DB),$(POSTGRES_DB),todo_app)
 .DEFAULT_GOAL := help
 .PHONY: help up up-logs down reset logs logs-backend logs-frontend logs-db ps \
         shell-backend shell-db migrate migration install-frontend \
-        lint-frontend typecheck-frontend test-backend clean
+        lint-frontend typecheck-frontend test-backend test-frontend \
+        test-frontend-coverage test-e2e test clean
 
 help: ## Show this help message
 	@echo "Available targets:"
-	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ { printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ { printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 up: ## Start the full stack (detached, auto-build)
 	docker compose up -d --build
@@ -63,6 +64,17 @@ typecheck-frontend: ## Run tsc --noEmit inside the frontend container
 
 test-backend: ## Run pytest inside the backend container
 	docker compose exec backend pytest -q
+
+test-frontend: ## Run vitest (unit + component tests) inside the frontend container
+	docker compose exec frontend pnpm test
+
+test-frontend-coverage: ## Run vitest with v8 coverage (enforces 70% thresholds)
+	docker compose exec frontend pnpm test:coverage
+
+test-e2e: ## Run Playwright E2E + axe-core suite on host (stack must be up: make up)
+	cd frontend && pnpm test:e2e
+
+test: test-backend test-frontend test-e2e ## Run backend, frontend, and E2E suites in sequence
 
 clean: ## Wipe containers, volumes, and locally-built images (DESTRUCTIVE)
 	docker compose down -v --rmi local

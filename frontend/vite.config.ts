@@ -17,6 +17,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
+    // Keep vitest scoped to co-located src tests; Playwright owns e2e/.
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    exclude: ["node_modules", "dist", "e2e"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
