@@ -17,6 +17,27 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.d.ts",
+        "src/**/*.test.{ts,tsx}",
+        "src/**/__tests__/**",
+        "src/test-setup.ts",
+        "src/main.tsx",
+        "src/vite-env.d.ts",
+      ],
+      // Objective: enforce >=70% meaningful coverage as a quality gate.
+      thresholds: {
+        lines: 70,
+        statements: 70,
+        branches: 70,
+        functions: 70,
+      },
+    },
   },
   server: {
     host: true,
